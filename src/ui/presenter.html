@@ -79,10 +79,18 @@
           <div class="tool-section">
             <div class="control-label">Tools</div>
             <div class="drawing-tools" role="toolbar" aria-label="Drawing tools">
-              <button type="button" class="btn tool-btn active" data-tool="link" aria-pressed="true"><span class="button-icon" aria-hidden="true">⌁</span><span>Link</span></button>
-              <button type="button" class="btn tool-btn" data-tool="pen" aria-pressed="false"><span class="button-icon" aria-hidden="true">✎</span><span>Pen</span></button>
-              <button type="button" class="btn tool-btn" data-tool="eraser" aria-pressed="false"><span class="button-icon" aria-hidden="true">⌫</span><span>Eraser</span></button>
-              <button type="button" class="btn tool-btn" data-tool="laser" aria-pressed="false"><span class="button-icon" aria-hidden="true">⊙</span><span>Laser</span></button>
+              <button type="button" class="btn tool-btn active" data-tool="link" aria-label="Link" title="Link" aria-pressed="true">
+                <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V5a2 2 0 0 1 4 0v4h1V3a2 2 0 1 1 4 0v6h1V5a2 2 0 1 1 4 0v9c0 4-3 7-7 7h-2c-2 0-3-1-4-2l-4-5a2 2 0 0 1 3-3l2 2Z" /></svg>
+              </button>
+              <button type="button" class="btn tool-btn" data-tool="pen" aria-label="Pen" title="Pen" aria-pressed="false">
+                <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /><path d="m13.5 7.5 3 3" /><path d="M4 20h5" /></svg>
+              </button>
+              <button type="button" class="btn tool-btn" data-tool="eraser" aria-label="Eraser" title="Eraser" aria-pressed="false">
+                <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 21-3.5-3.5a2.1 2.1 0 0 1 0-3L13.5 4.5a2.1 2.1 0 0 1 3 0l3 3a2.1 2.1 0 0 1 0 3L11 21H7Z" /><path d="m14 14 4 4" /><path d="M11 21h9" /></svg>
+              </button>
+              <button type="button" class="btn tool-btn" data-tool="laser" aria-label="Laser pointer" title="Laser pointer" aria-pressed="false">
+                <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 8-8" /><path d="m3 21 3-3" /><path d="m13 11 2 2" /><circle cx="18" cy="6" r="3" /><path d="M18 1v2M18 9v2M13 6h2M21 6h2" /></svg>
+              </button>
             </div>
           </div>
           <div class="slide-control-panel">

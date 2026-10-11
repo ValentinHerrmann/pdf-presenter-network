@@ -12,7 +12,7 @@
 
 const STORAGE_KEY = "pdf-presenter-layout";
 const MIN_PCT = 20;
-const MAX_PCT = 85;
+const MAX_PCT = 72;
 const DEFAULT_COL_LEFT_PCT = 66;
 const DEFAULT_ROW_TOP_PCT = 60;
 
