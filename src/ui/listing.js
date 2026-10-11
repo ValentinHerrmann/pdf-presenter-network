@@ -33,6 +33,34 @@ export async function initListing() {
   const dirEl = document.getElementById("dir-path");
   if (dirEl && config.dirName) dirEl.textContent = config.dirName;
 
+  const openButton = document.getElementById("open-pdf");
+  const openInput = document.getElementById("open-pdf-input");
+  openButton?.addEventListener("click", () => openInput?.click());
+  openInput?.addEventListener("change", async () => {
+    const file = openInput.files?.[0];
+    if (!file) return;
+    openButton.disabled = true;
+    openButton.textContent = "Opening...";
+    try {
+      const response = await fetch("/api/open", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/pdf",
+          "X-PDF-Name": file.name,
+        },
+        body: file,
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const result = await response.json();
+      window.location.href = result.presenterUrl;
+    } catch (err) {
+      openButton.disabled = false;
+      openButton.textContent = "Open PDF";
+      alert(`Could not open PDF: ${err.message}`);
+    }
+    openInput.value = "";
+  });
+
   const listEl = document.getElementById("list");
   try {
     const res = await fetch("/api/listing");

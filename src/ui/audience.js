@@ -25,6 +25,21 @@ export async function initAudience() {
   let frozenAt = null;
   const socket = createWebSocketTransport("audience");
   const strokesBySlide = new Map();
+
+  if (window.location.pathname === "/" && config.pdfName) {
+    window.setInterval(async () => {
+      try {
+        const response = await fetch("/api/current", { cache: "no-store" });
+        const current = await response.json();
+        if (current.pdfName && current.pdfName !== config.pdfName) {
+          window.location.reload();
+        }
+      } catch {
+        // Keep the current audience view during transient server disconnects.
+      }
+    }, 1000);
+  }
+
   const overlay = createOverlay({
     canvas,
     overlay: overlayCanvas,

@@ -15,6 +15,8 @@ export interface PdfProxyDeps {
   uiDir: string;
   pdfjsDir: string;
   timerMinutes?: number;
+  resolvePdfPath?: (pdfName: string) => string | undefined;
+  onPresenter?: (pdfName: string, audienceHtml: string) => void;
 }
 
 interface PerPdfCache {
@@ -27,12 +29,12 @@ const cache = new Map<string, PerPdfCache>();
 
 async function getOrCreateCache(
   pdfName: string,
+  pdfPath: string,
   deps: PdfProxyDeps,
 ): Promise<PerPdfCache> {
   let entry = cache.get(pdfName);
   if (entry) return entry;
 
-  const pdfPath = join(deps.dirPath, pdfName);
   const notesPath = notesPathFor(pdfPath);
   const prefix = `/pdf/${encodeURIComponent(pdfName)}`;
 
@@ -79,15 +81,17 @@ export async function handlePdfProxyRoutes(
     notFound(res);
     return "handled";
   }
-  const pdfPath = join(deps.dirPath, pdfName);
-  const safePath = resolve(deps.dirPath, pdfName);
-  if (!safePath.startsWith(deps.dirPath + "/") || !existsSync(pdfPath)) {
+  const resolvedPdfPath = deps.resolvePdfPath?.(pdfName);
+  const pdfPath = resolvedPdfPath ?? join(deps.dirPath, pdfName);
+  const safePath = resolve(pdfPath);
+  if ((!resolvedPdfPath && !safePath.startsWith(deps.dirPath + "/")) || !existsSync(pdfPath)) {
     notFound(res);
     return "handled";
   }
 
   const notesPath = notesPathFor(pdfPath);
-  const perPdf = await getOrCreateCache(pdfName, deps);
+  const perPdf = await getOrCreateCache(pdfName, pdfPath, deps);
+  if (subPath === "/presenter") deps.onPresenter?.(pdfName, perPdf.audienceHtml);
 
   // Build a sub-URL with the prefix stripped
   const subUrl = new URL(subPath + url.search, `http://localhost`);

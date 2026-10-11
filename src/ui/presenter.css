@@ -976,7 +976,7 @@ button.timer:focus-visible {
 
 .meta-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -986,6 +986,9 @@ button.timer:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 7px;
+  min-width: 0;
+  padding-inline: 6px;
+  white-space: nowrap;
   text-decoration: none;
 }
 

@@ -14,6 +14,7 @@
         background: #0d1117; color: #e6edf3;
       }
       .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+      .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
       h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
       .subtitle { font-size: 13px; color: #8b949e; margin-bottom: 24px; }
       .pdf-list { display: flex; flex-direction: column; gap: 8px; }
@@ -46,6 +47,7 @@
       .btn:hover { background: #252b35; border-color: #3a4049; }
       .btn-primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
       .btn-primary:hover { background: #388bfd; }
+      .btn:disabled { opacity: 0.6; cursor: wait; }
       .empty-state {
         text-align: center; padding: 64px 24px; color: #8b949e; font-size: 14px;
       }
@@ -54,7 +56,11 @@
   </head>
   <body>
     <div class="container">
-      <h1>PDF Presenter</h1>
+      <div class="header">
+        <h1>PDF Presenter</h1>
+        <button type="button" id="open-pdf" class="btn btn-primary">Open PDF</button>
+        <input type="file" id="open-pdf-input" accept="application/pdf,.pdf" hidden />
+      </div>
       <div class="subtitle" id="dir-path"></div>
       <div id="list" class="pdf-list"><div class="loading">Loading...</div></div>
     </div>

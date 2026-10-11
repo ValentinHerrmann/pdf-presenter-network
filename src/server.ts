@@ -1,4 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import type {
   ServerConfig,
   DirectoryConfig,
@@ -13,8 +16,10 @@ import { handleRecordingRoutes } from "./server/routes/recording.js";
 import { handleStaticRoutes } from "./server/routes/static.js";
 import { handleListingRoutes } from "./server/routes/listing.js";
 import { handlePdfProxyRoutes } from "./server/routes/pdf-proxy.js";
+import { handleUploadRoutes } from "./server/routes/upload.js";
 import { handleSharedAssetRoutes } from "./server/routes/static.js";
 import { attachSyncServer } from "./server/sync.js";
+import { getPdfNotesStatus, listPdfsInDirectory, type PdfNotesStatus } from "./utils.js";
 
 export type { ServerConfig, DirectoryConfig, StartedServer } from "./server/types.js";
 
@@ -106,10 +111,68 @@ export async function startDirectoryServer(
   const { basename } = await import("node:path");
   const uiDir = resolveUiDir(import.meta.url);
   const pdfjsDir = resolvePdfjsDir(import.meta.url);
+  const uploadDir = await mkdtemp(join(tmpdir(), "pdf-presenter-"));
+  const uploadedPdfPaths = new Map<string, string>();
+  let currentPdfName: string | null = null;
+  let currentAudienceHtml: string | null = null;
+
+  async function savePdf(name: string, data: Buffer): Promise<string> {
+    const baseName = basename(name).replace(/\.pdf$/i, "");
+    let pdfName = `${baseName}.pdf`;
+    let suffix = 2;
+    while (
+      listPdfsInDirectory(config.dirPath).includes(pdfName) ||
+      uploadedPdfPaths.has(pdfName)
+    ) {
+      pdfName = `${baseName} (${suffix++}).pdf`;
+    }
+    const storedPath = join(uploadDir, pdfName);
+    await writeFile(storedPath, data, { flag: "wx" });
+    uploadedPdfPaths.set(pdfName, storedPath);
+    return pdfName;
+  }
+
+  function getStatuses(): PdfNotesStatus[] {
+    const originalStatuses = listPdfsInDirectory(config.dirPath).map((name) =>
+      getPdfNotesStatus(config.dirPath, name),
+    );
+    const uploadedStatuses = [...uploadedPdfPaths.entries()].map(([name, path]) =>
+      ({ ...getPdfNotesStatus(uploadDir, basename(path)), pdfName: name }),
+    );
+    return [...originalStatuses, ...uploadedStatuses].sort((a, b) =>
+      a.pdfName.localeCompare(b.pdfName),
+    );
+  }
 
   const listingHtml = await renderHtml(uiDir, "listing.html", {
     dirName: basename(config.dirPath),
   });
+  const waitingHtml = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Waiting for presentation</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { height: 100%; margin: 0; }
+      body { display: grid; place-items: center; background: #0d1117; color: #e6edf3; font: 16px system-ui, sans-serif; }
+      main { text-align: center; }
+      p { color: #8b949e; }
+      a { color: #58a6ff; }
+    </style>
+  </head>
+  <body>
+    <main><h1>Waiting for presentation</h1><p>The audience view will appear when a presenter opens a PDF.</p><a href="/list">Open the PDF browser</a></main>
+    <script>
+      setInterval(async () => {
+        const response = await fetch('/api/current', { cache: 'no-store' });
+        const current = await response.json();
+        if (current.audienceUrl) window.location.replace(current.audienceUrl);
+      }, 1000);
+    </script>
+  </body>
+</html>`;
 
   const handler = async (
     req: IncomingMessage,
@@ -118,9 +181,18 @@ export async function startDirectoryServer(
     const url = new URL(req.url ?? "/", `http://localhost:${config.port}`);
     try {
       if (
+        (await handleUploadRoutes(req, res, url, { savePdf })) === "handled"
+      )
+        return;
+
+      if (
         (await handleListingRoutes(req, res, url, {
           dirPath: config.dirPath,
           listingHtml,
+          waitingHtml,
+          getCurrentPdf: () => currentPdfName,
+          getCurrentAudienceHtml: () => currentAudienceHtml,
+          getStatuses,
         })) === "handled"
       )
         return;
@@ -131,6 +203,11 @@ export async function startDirectoryServer(
           uiDir,
           pdfjsDir,
           timerMinutes: config.timerMinutes,
+          resolvePdfPath: (name) => uploadedPdfPaths.get(name),
+          onPresenter: (name, audienceHtml) => {
+            currentPdfName = name;
+            currentAudienceHtml = audienceHtml;
+          },
         })) === "handled"
       )
         return;
@@ -175,6 +252,7 @@ export async function startDirectoryServer(
     stop: () =>
       new Promise<void>((resolveP, rejectP) => {
         stopSync()
+          .then(() => rm(uploadDir, { recursive: true, force: true }))
           .then(() => server.close((err) => (err ? rejectP(err) : resolveP())))
           .catch(rejectP);
       }),

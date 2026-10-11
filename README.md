@@ -35,6 +35,7 @@ npx pdf-presenter slides.pdf           # serve & open browser
 npx pdf-presenter -gn slides.pdf       # generate a notes template
 npx pdf-presenter slides.pdf -t 20     # 20-minute countdown
 npx pdf-presenter ./slides/            # browse a directory of PDFs
+npx pdf-presenter                      # open the audience view for the current directory
 ```
 
 ---
@@ -46,7 +47,7 @@ Presenting a PDF deck usually means either:
 - Opening the PDF in a viewer and losing speaker notes / next-slide preview, or
 - Converting slides to HTML (and fighting layout, fonts, and build tooling).
 
-`pdf-presenter` takes a third path: keep the PDF as-is, render it with `pdf.js` in the browser, and layer a presenter window (current + next + notes + timer) on top. Slide state syncs through the local server over WebSockets, so audience devices on the same LAN can follow the presenter.
+`pdf-presenter` takes a third path: keep the PDF as-is, render it with `pdf.js` in the browser, and layer a presenter window (current + next + notes + timer) on top. Slide state syncs through the local server over WebSockets, so audience devices on the same LAN can follow the presenter. Start it without an argument to open the audience view for the current directory; use `/list` to browse and open a PDF.
 
 ## Features
 
@@ -93,11 +94,13 @@ For Beamer decks, a page containing `\\transduration{5}` advances after five sec
 
 ## Usage
 
-### Serve a PDF
+### Serve a PDF or browse files
 
 ```bash
-pdf-presenter <file.pdf> [options]
+pdf-presenter [file-or-directory] [options]
 ```
+
+When no file or directory is supplied, the current directory is served. The root URL is the audience view; before a presenter opens a PDF it shows a waiting screen. Use `/list` to browse and open a PDF.
 
 | Flag | Alias | Default | Description |
 |------|-------|---------|-------------|

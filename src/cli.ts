@@ -28,7 +28,7 @@ export async function runCli(argv: string[]): Promise<void> {
       "Serve a PDF as browser slides with a full presenter mode (notes, next preview, timer).",
     )
     .version(VERSION, "-v, --version")
-    .argument("<file>", "Path to a PDF file or a directory of PDFs")
+    .argument("[file]", "Path to a PDF file or a directory of PDFs (defaults to the current directory)")
     .addOption(new Option("-p, --port <port>", "Server port").default("3000"))
     .option("--no-open", "Don't auto-open browser")
     .option("--presenter", "Open directly in presenter mode", false)
@@ -40,14 +40,15 @@ export async function runCli(argv: string[]): Promise<void> {
       false,
     )
     .option("--force", "Overwrite existing notes file when used with -gn", false)
-    .action(async (file: string, options: ServeOptions) => {
+    .action(async (file: string | undefined, options: ServeOptions) => {
       try {
         // Check if the argument is a directory → directory listing mode
-        const abs = resolve(file);
+        const abs = resolve(file ?? ".");
         if (existsSync(abs) && statSync(abs).isDirectory()) {
           await runDirectoryServe(abs, options);
           return;
         }
+        if (!file) return;
 
         const pdfPath = resolvePdfPath(file);
 
@@ -177,13 +178,14 @@ async function runDirectoryServe(
 
   process.stdout.write(
     `\n🎯 pdf-presenter v${VERSION} (directory mode)\n\n` +
-      `   Listing: ${url}/list\n\n` +
+      `   Audience: ${url}/\n` +
+      `   Files:    ${url}/list\n\n` +
       `   Directory: ${basename(dirPath)}/\n` +
       `\n   Press Ctrl+C to stop.\n\n`,
   );
 
   if (options.open) {
-    open(`${url}/list`).catch(() => {
+    open(url).catch(() => {
       /* ignore browser open failures */
     });
   }

@@ -59,6 +59,34 @@ export async function initPresenter() {
       backBtn.href = config.listUrl;
       backBtn.classList.remove("hidden");
     }
+    const openButton = document.getElementById("open-pdf");
+    const openInput = document.getElementById("open-pdf-input");
+    openButton?.classList.remove("hidden");
+    openButton?.addEventListener("click", () => openInput?.click());
+    openInput?.addEventListener("change", async () => {
+      const file = openInput.files?.[0];
+      if (!file || !openButton) return;
+      openButton.disabled = true;
+      openButton.textContent = "Opening...";
+      try {
+        const response = await fetch("/api/open", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/pdf",
+            "X-PDF-Name": file.name,
+          },
+          body: file,
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const result = await response.json();
+        window.location.href = result.presenterUrl;
+      } catch (err) {
+        openButton.disabled = false;
+        openButton.textContent = "Open PDF";
+        alert(`Could not open PDF: ${err.message}`);
+      }
+      openInput.value = "";
+    });
   }
 
   // "Audience" button — open audience view in new tab
