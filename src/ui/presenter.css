@@ -157,6 +157,8 @@ body.presenter {
   display: grid;
   height: 100vh;
   width: 100vw;
+  min-width: 760px;
+  min-height: 560px;
   padding: 12px;
   grid-template-columns: var(--col-left, 66%) 10px 1fr;
   grid-template-rows: 1fr;
@@ -173,11 +175,13 @@ body.presenter {
 }
 .col-left {
   grid-column: 1;
-  grid-template-rows: var(--row-top-left, 60%) 10px 1fr;
+  min-width: 360px;
+  grid-template-rows: minmax(220px, var(--row-top-left, 60%)) 10px minmax(44px, 1fr);
 }
 .col-right {
   grid-column: 3;
-  grid-template-rows: var(--row-top-right, 60%) 10px 1fr;
+  min-width: 360px;
+  grid-template-rows: minmax(180px, var(--row-top-right, 60%)) 10px minmax(330px, 1fr);
 }
 
 .current {
@@ -189,8 +193,20 @@ body.presenter {
 .notes {
   grid-row: 3;
 }
+
+.col-left.notes-collapsed {
+  grid-template-rows: minmax(220px, 1fr) 10px auto;
+}
+
+.notes.notes-hidden .notes-body,
+.notes.notes-hidden .notes-actions,
+.notes.notes-hidden .record-panel {
+  display: none;
+}
 .meta {
   grid-row: 3;
+  min-width: 340px;
+  min-height: 330px;
 }
 
 /* Draggable split handles. Visual is a small green grip centered in the
@@ -273,6 +289,88 @@ body.presenter {
   gap: 12px;
 }
 
+.current-title {
+  justify-content: space-between;
+}
+
+.slide-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-btn,
+.zoom-level {
+  appearance: none;
+  min-width: 48px;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid #2d333b;
+  border-radius: 4px;
+  background: #1d222a;
+  color: #d7dbe3;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-btn:hover,
+.zoom-level:hover {
+  background: #252b35;
+  border-color: #3a4049;
+}
+
+.icon-btn:focus-visible,
+.zoom-level:focus-visible,
+.notes-toggle:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid #7fd4a0;
+  outline-offset: 2px;
+}
+
+.notes-toggle {
+  appearance: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: -5px 0;
+  padding: 7px 11px;
+  border: 1px solid #3a4049;
+  border-radius: 4px;
+  background: #1d222a;
+  color: #d7dbe3;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.notes-toggle:hover {
+  background: #252b35;
+  border-color: #7fd4a0;
+  color: #fff;
+}
+
+.notes-toggle .button-icon {
+  color: #7fd4a0;
+  font-size: 18px;
+  transform: rotate(180deg);
+}
+
+.notes.notes-hidden .notes-toggle .button-icon {
+  transform: rotate(0deg);
+}
+
+.zoom-level {
+  min-width: 76px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
 .notes-status {
   font-size: 10px;
   letter-spacing: 0.1em;
@@ -311,11 +409,21 @@ body.presenter {
   padding: 12px;
   overflow: hidden;
   background: #000;
+  touch-action: none;
 }
 
 .canvas-wrap .slide-stack {
   max-width: 100%;
   max-height: 100%;
+  will-change: transform;
+}
+
+.canvas-wrap.zoomed {
+  cursor: grab;
+}
+
+.canvas-wrap.zoomed:active {
+  cursor: grabbing;
 }
 
 .presenter .canvas-wrap .overlay-layer {
@@ -489,13 +597,11 @@ button.timer:focus-visible {
   padding-bottom: 4px;
 }
 
-.meta > .notes-actions {
-  grid-column: 1 / -1;
+.notes > .notes-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  max-width: none;
-  width: auto;
+  padding: 8px 12px;
 }
 
 .notes-actions .notes-action-status {
@@ -549,8 +655,7 @@ button.timer:focus-visible {
    Recording controls
    ========================================================================== */
 
-.meta > .record-panel {
-  grid-column: 1 / -1;
+.notes > .record-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -558,6 +663,7 @@ button.timer:focus-visible {
   border: 1px solid #23272e;
   border-radius: 4px;
   background: #10131a;
+  margin: 0 12px 12px;
 }
 
 .record-header {
@@ -773,6 +879,12 @@ button.timer:focus-visible {
   margin-top: 2px;
 }
 
+.meta > .slide-controls {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
 .hints span {
   display: inline-block;
   padding: 0 5px;
@@ -785,8 +897,8 @@ button.timer:focus-visible {
 }
 
 /* ==========================================================================
-   Meta: filename + view row (grid + cursor sync)
-   ========================================================================== */
+  Meta: filename + view row
+  ========================================================================== */
 
 .meta > .pdf-name {
   grid-column: 1 / -1;
@@ -815,10 +927,235 @@ button.timer:focus-visible {
   display: none;
 }
 
-#cursor-sync-btn.active {
-  background: #1f3a28;
-  border-color: #3d7a52;
-  color: #d4f0de;
+/* Presenter control console: status, utility actions, tools, then navigation. */
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.meta-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.meta-top .timer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slide-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+  text-align: right;
+}
+
+.slide-status .counter {
+  color: #d7dbe3;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.slide-status .pdf-name {
+  max-width: 100%;
+  padding: 2px 0 0;
+  color: #7a8291;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.meta-actions .btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-decoration: none;
+}
+
+.meta-actions .hidden {
+  display: none;
+}
+
+.button-icon {
+  color: #d7dbe3;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tool-section,
+.slide-control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-label {
+  color: #5a6270;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.drawing-tools {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.drawing-tools .btn {
+  min-width: 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 5px;
+  font-size: 11px;
+}
+
+.drawing-tools .button-icon {
+  color: #d7dbe3;
+  font-size: 20px;
+}
+
+.tool-btn.active .button-icon {
+  color: #7fd4a0;
+}
+
+.slide-control-panel {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid #23272e;
+}
+
+.slide-control-panel .slide-controls {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 8px;
+}
+
+.control-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.zoom-group {
+  grid-template-columns: minmax(0, 1fr) minmax(62px, 1.35fr) minmax(0, 1fr);
+}
+
+.slide-control-panel .icon-btn,
+.slide-control-panel .zoom-level {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  font-size: 24px;
+}
+
+.slide-control-panel .zoom-level {
+  font-size: 13px;
+}
+
+.meta > .hints {
+  flex: 0 0 auto;
+  margin-top: 0;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  body.presenter {
+    overflow: auto;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .col-left,
+  .col-right {
+    width: 100%;
+    min-width: 0;
+    grid-column: auto;
+  }
+
+  .col-left {
+    grid-template-rows: minmax(300px, 60vh) 10px auto;
+  }
+
+  .col-left.notes-collapsed {
+    grid-template-rows: minmax(300px, 60vh) 10px auto;
+  }
+
+  .col-right {
+    grid-template-rows: minmax(220px, 45vh) 10px auto;
+  }
+
+  .divider-col {
+    display: none;
+  }
+
+  .meta {
+    min-width: 0;
+    min-height: 330px;
+  }
+}
+
+@media (max-width: 560px) {
+  .layout {
+    padding: 6px;
+  }
+
+  .panel-title {
+    padding: 8px 10px;
+  }
+
+  .meta {
+    padding: 10px;
+  }
+
+  button.timer {
+    font-size: 36px;
+  }
+
+  .drawing-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .slide-control-panel .slide-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .meta-top {
+    gap: 8px;
+  }
+
+  .slide-status .counter {
+    font-size: 16px;
+  }
 }
 
 /* ==========================================================================

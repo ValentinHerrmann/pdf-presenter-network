@@ -10,7 +10,7 @@
   </head>
   <body class="presenter">
     <div class="layout">
-      <div class="col col-left">
+      <div class="col col-left notes-collapsed">
         <section class="current">
           <header class="panel-title">Current</header>
           <div class="canvas-wrap">
@@ -21,131 +21,92 @@
             </div>
           </div>
         </section>
-        <div
-          class="divider-row"
-          id="divider-row-left"
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="Resize left column rows"
-        ></div>
-        <section class="notes">
+        <div class="divider-row" id="divider-row-left" role="separator" aria-orientation="horizontal" aria-label="Resize left column rows"></div>
+        <section class="notes notes-hidden" id="notes-panel">
           <header class="panel-title">
             <span>Speaker Notes</span>
             <span id="notes-status" class="notes-status" aria-live="polite"></span>
             <span id="notes-hint" class="notes-hint"></span>
+            <button type="button" id="toggle-notes" class="notes-toggle" title="Show speaker notes" aria-label="Show speaker notes" aria-expanded="false">
+              <span class="button-icon" aria-hidden="true">▾</span>
+              <span>Speaker notes</span>
+            </button>
           </header>
-          <textarea
-            id="notes-body"
-            class="notes-body"
-            spellcheck="false"
-            autocomplete="off"
-            placeholder="Type notes for this slide… (saved automatically)"
-          ></textarea>
+          <textarea id="notes-body" class="notes-body" spellcheck="false" autocomplete="off" placeholder="Type notes for this slide… (saved automatically)"></textarea>
+          <div class="notes-actions">
+            <button type="button" id="export-notes" class="btn">Export speaker note</button>
+            <button type="button" id="load-notes" class="btn">Load speaker note</button>
+            <input type="file" id="load-notes-input" accept="application/json,.json" hidden />
+            <div id="notes-action-status" class="notes-action-status" aria-live="polite"></div>
+          </div>
+          <div class="record-panel">
+            <div class="record-header">
+              <span class="record-indicator" id="record-indicator" aria-hidden="true"></span>
+              <span class="record-label" id="record-label">Audio</span>
+              <span class="record-elapsed" id="record-elapsed">00:00</span>
+            </div>
+            <div class="record-buttons">
+              <button type="button" id="record-start" class="btn btn-record">● Start</button>
+              <button type="button" id="record-pause" class="btn" disabled>Pause</button>
+              <button type="button" id="record-stop" class="btn" disabled>Stop</button>
+            </div>
+          </div>
         </section>
       </div>
-      <div
-        class="divider-col"
-        id="divider-col"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize columns"
-      ></div>
+      <div class="divider-col" id="divider-col" role="separator" aria-orientation="vertical" aria-label="Resize columns"></div>
       <div class="col col-right">
         <section class="next">
           <header class="panel-title">Next</header>
-          <div class="canvas-wrap">
-            <canvas id="next-canvas"></canvas>
+          <div class="canvas-wrap"><canvas id="next-canvas"></canvas></div>
+        </section>
+        <div class="divider-row" id="divider-row-right" role="separator" aria-orientation="horizontal" aria-label="Resize right column rows"></div>
+        <section class="meta">
+          <div class="meta-top">
+            <div class="timer-row">
+              <button type="button" id="timer" class="timer" title="Click to pause / resume (R to reset)" aria-label="Timer — click to pause or resume">00:00</button>
+              <button type="button" id="timer-reset" class="timer-reset" title="Reset timer (R)" aria-label="Reset timer">↺</button>
+            </div>
+            <div class="slide-status">
+              <span class="counter" id="counter">– / –</span>
+              <span class="pdf-name" id="pdf-name" title=""></span>
+            </div>
+          </div>
+          <div class="meta-actions">
+            <a id="back-to-list" class="btn hidden" href="/list">← All PDFs</a>
+            <button type="button" id="grid-btn" class="btn" title="Show slide grid (G)" aria-label="Show slide grid"><span class="button-icon" aria-hidden="true">▦</span><span>Grid</span></button>
+            <button type="button" id="open-audience" class="btn" title="Open audience view (new tab)" aria-label="Open audience view"><span class="button-icon" aria-hidden="true">↗</span><span>Audience</span></button>
+          </div>
+          <div class="tool-section">
+            <div class="control-label">Tools</div>
+            <div class="drawing-tools" role="toolbar" aria-label="Drawing tools">
+              <button type="button" class="btn tool-btn active" data-tool="link" aria-pressed="true"><span class="button-icon" aria-hidden="true">⌁</span><span>Link</span></button>
+              <button type="button" class="btn tool-btn" data-tool="pen" aria-pressed="false"><span class="button-icon" aria-hidden="true">✎</span><span>Pen</span></button>
+              <button type="button" class="btn tool-btn" data-tool="eraser" aria-pressed="false"><span class="button-icon" aria-hidden="true">⌫</span><span>Eraser</span></button>
+              <button type="button" class="btn tool-btn" data-tool="laser" aria-pressed="false"><span class="button-icon" aria-hidden="true">⊙</span><span>Laser</span></button>
+            </div>
+          </div>
+          <div class="slide-control-panel">
+            <div class="control-label">Slide</div>
+            <div class="slide-controls" role="toolbar" aria-label="Slide controls">
+              <div class="control-group">
+                <button type="button" id="prev-slide" class="icon-btn" title="Previous slide" aria-label="Previous slide"><span aria-hidden="true">◀</span></button>
+                <button type="button" id="next-slide" class="icon-btn" title="Next slide" aria-label="Next slide"><span aria-hidden="true">▶</span></button>
+              </div>
+              <div class="control-group zoom-group">
+                <button type="button" id="zoom-out" class="icon-btn" title="Zoom out" aria-label="Zoom out"><span aria-hidden="true">−</span></button>
+                <button type="button" id="zoom-reset" class="zoom-level" title="Reset zoom" aria-label="Reset zoom">100%</button>
+                <button type="button" id="zoom-in" class="icon-btn" title="Zoom in" aria-label="Zoom in"><span aria-hidden="true">+</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span>← →</span> nav
+            <span>G</span> grid
+            <span>F</span> freeze
+            <span>B</span> black
+            <span>R</span> reset timer
           </div>
         </section>
-        <div
-          class="divider-row"
-          id="divider-row-right"
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="Resize right column rows"
-        ></div>
-        <section class="meta">
-        <div class="timer-row">
-          <button
-            type="button"
-            id="timer"
-            class="timer"
-            title="Click to pause / resume (R to reset)"
-            aria-label="Timer — click to pause or resume"
-          >00:00</button>
-          <button
-            type="button"
-            id="timer-reset"
-            class="timer-reset"
-            title="Reset timer (R)"
-            aria-label="Reset timer"
-          >↺</button>
-          <button
-            type="button"
-            id="open-audience"
-            class="timer-action"
-            title="Open audience view (new tab)"
-            aria-label="Open audience view"
-          >Audience ↗</button>
-        </div>
-        <div class="counter" id="counter">– / –</div>
-        <div class="pdf-name" id="pdf-name" title=""></div>
-        <div class="view-row">
-          <a id="back-to-list" class="btn hidden" href="/list">← All PDFs</a>
-          <button
-            type="button"
-            id="grid-btn"
-            class="btn"
-            title="Show slide grid (G)"
-            aria-label="Show slide grid"
-          >⊞ Grid</button>
-          <button
-            type="button"
-            id="cursor-sync-btn"
-            class="btn"
-            title="Toggle cursor sync (L)"
-            aria-label="Toggle cursor sync"
-            aria-pressed="false"
-          >◉ Cursor sync: off</button>
-        </div>
-        <div class="drawing-tools" role="toolbar" aria-label="Drawing tools">
-          <button type="button" class="btn tool-btn active" data-tool="link" aria-pressed="true">Link</button>
-          <button type="button" class="btn tool-btn" data-tool="pen" aria-pressed="false">Pen</button>
-          <button type="button" class="btn tool-btn" data-tool="eraser" aria-pressed="false">Eraser</button>
-          <button type="button" class="btn tool-btn" data-tool="laser" aria-pressed="false">Laser</button>
-        </div>
-        <div class="notes-actions">
-          <button type="button" id="export-notes" class="btn">Export speaker note</button>
-          <button type="button" id="load-notes" class="btn">Load speaker note</button>
-          <input
-            type="file"
-            id="load-notes-input"
-            accept="application/json,.json"
-            hidden
-          />
-          <div id="notes-action-status" class="notes-action-status" aria-live="polite"></div>
-        </div>
-        <div class="record-panel">
-          <div class="record-header">
-            <span class="record-indicator" id="record-indicator" aria-hidden="true"></span>
-            <span class="record-label" id="record-label">Audio</span>
-            <span class="record-elapsed" id="record-elapsed">00:00</span>
-          </div>
-          <div class="record-buttons">
-            <button type="button" id="record-start" class="btn btn-record">● Start</button>
-            <button type="button" id="record-pause" class="btn" disabled>Pause</button>
-            <button type="button" id="record-stop" class="btn" disabled>Stop</button>
-          </div>
-        </div>
-        <div class="hints">
-          <span>← →</span> nav
-          <span>G</span> grid
-          <span>L</span> cursor sync
-          <span>F</span> freeze
-          <span>B</span> black
-          <span>R</span> reset timer
-        </div>
-      </section>
       </div>
     </div>
 

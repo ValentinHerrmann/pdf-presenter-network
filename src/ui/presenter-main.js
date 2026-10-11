@@ -16,11 +16,11 @@ import { createRecordingDialog } from "./modules/recording-dialog.js";
 import { createRecorder } from "./modules/recording.js";
 import { createResizableLayout } from "./modules/resizable-layout.js";
 import { createGridView } from "./modules/grid-view.js";
-import { createCursorSync } from "./modules/cursor-sync.js";
 import { createWebSocketTransport } from "./modules/websocket.js";
 import { createOverlay } from "./modules/overlay.js";
 import { createLinkLayer } from "./modules/link-layer.js";
 import { readSlideDurations } from "./modules/slide-duration.js";
+import { createSlideViewport } from "./modules/slide-viewport.js";
 
 export async function initPresenter() {
   const config = readConfig();
@@ -41,9 +41,11 @@ export async function initPresenter() {
   const timerEl = document.getElementById("timer");
   const pdfNameEl = document.getElementById("pdf-name");
   const gridBtn = document.getElementById("grid-btn");
-  const cursorSyncBtn = document.getElementById("cursor-sync-btn");
   const linkLayerEl = document.getElementById("link-layer");
   const overlayCanvas = document.getElementById("overlay-layer");
+  const notesPanel = document.getElementById("notes-panel");
+  const notesToggle = document.getElementById("toggle-notes");
+  const leftColumn = document.querySelector(".col-left");
 
   if (pdfNameEl && config.pdfName) {
     pdfNameEl.textContent = config.pdfName;
@@ -71,6 +73,7 @@ export async function initPresenter() {
   let overlay;
   let linkLayer;
   let transitionTimer = null;
+  let notesHidden = true;
 
   function scheduleTransition() {
     if (transitionTimer !== null) window.clearTimeout(transitionTimer);
@@ -116,6 +119,7 @@ export async function initPresenter() {
         : clearNext(),
     ]);
     await linkLayer?.render(currentSlide);
+    slideViewport.reset();
     socket.send({ type: "slide", slide: currentSlide });
     overlay?.resize();
     scheduleTransition();
@@ -154,6 +158,32 @@ export async function initPresenter() {
     canvas: currentCanvas,
     layer: linkLayerEl,
     onNavigate: (slide) => show(slide),
+  });
+
+  const slideViewport = createSlideViewport({
+    viewport: currentContainer,
+    content: currentCanvas.closest(".slide-stack"),
+    canPan: () => selectedTool === "link",
+    onChange: ({ scale }) => {
+      const zoomReset = document.getElementById("zoom-reset");
+      if (zoomReset) zoomReset.textContent = `${Math.round(scale * 100)}%`;
+    },
+  });
+
+  document.getElementById("prev-slide")?.addEventListener("click", () => show(currentSlide - 1));
+  document.getElementById("next-slide")?.addEventListener("click", () => show(currentSlide + 1));
+  document.getElementById("zoom-in")?.addEventListener("click", slideViewport.zoomIn);
+  document.getElementById("zoom-out")?.addEventListener("click", slideViewport.zoomOut);
+  document.getElementById("zoom-reset")?.addEventListener("click", slideViewport.reset);
+  notesToggle?.addEventListener("click", () => {
+    notesHidden = !notesHidden;
+    notesPanel?.classList.toggle("notes-hidden", notesHidden);
+    leftColumn?.classList.toggle("notes-collapsed", notesHidden);
+    notesPanel?.setAttribute("aria-hidden", String(notesHidden));
+    notesToggle.setAttribute("aria-expanded", String(!notesHidden));
+    notesToggle.title = notesHidden ? "Show speaker notes" : "Hide speaker notes";
+    notesToggle.setAttribute("aria-label", notesToggle.title);
+    slideViewport.resize();
   });
 
   for (const button of document.querySelectorAll("[data-tool]")) {
@@ -284,16 +314,13 @@ export async function initPresenter() {
     } else if (ev.key === "g" || ev.key === "G") {
       ev.preventDefault();
       gridView.open();
-    } else if (ev.key === "l" || ev.key === "L") {
-      ev.preventDefault();
-      cursorSync.toggle();
-      updateCursorSyncBtn();
     }
   });
 
   window.addEventListener("resize", () => {
     show(currentSlide);
     overlay.resize();
+    slideViewport.resize();
   });
 
   // ---- Timer ----
@@ -313,26 +340,6 @@ export async function initPresenter() {
   });
   if (gridBtn) gridBtn.addEventListener("click", () => gridView.open());
 
-  // ---- Cursor sync ----
-  const cursorSync = createCursorSync({
-    canvas: currentCanvas,
-    send: (message) => socket.send(message),
-  });
-  function updateCursorSyncBtn() {
-    if (!cursorSyncBtn) return;
-    const on = cursorSync.isEnabled();
-    cursorSyncBtn.textContent = `◉ Cursor sync: ${on ? "on" : "off"}`;
-    cursorSyncBtn.setAttribute("aria-pressed", String(on));
-    cursorSyncBtn.classList.toggle("active", on);
-  }
-  if (cursorSyncBtn) {
-    cursorSyncBtn.addEventListener("click", () => {
-      cursorSync.toggle();
-      updateCursorSyncBtn();
-    });
-  }
-  updateCursorSyncBtn();
-
   // ---- Resizable layout dividers ----
   createResizableLayout({
     layoutEl: document.querySelector(".layout"),
@@ -344,6 +351,7 @@ export async function initPresenter() {
     onResize: () => {
       show(currentSlide);
       overlay.resize();
+      slideViewport.resize();
     },
   });
 
