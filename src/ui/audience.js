@@ -8,6 +8,7 @@ import {
 } from "./modules/pdf-render.js";
 import { createWebSocketTransport } from "./modules/websocket.js";
 import { createOverlay } from "./modules/overlay.js";
+import { createSlideViewport } from "./modules/slide-viewport.js";
 
 export async function initAudience() {
   const config = readConfig();
@@ -29,6 +30,11 @@ export async function initAudience() {
     overlay: overlayCanvas,
     getStrokes: () => strokesBySlide.get(currentSlide) ?? [],
   });
+  const slideViewport = createSlideViewport({
+    viewport: stage,
+    content: canvas.closest(".slide-stack"),
+    canPan: () => false,
+  });
 
   async function show(n) {
     const slide = clampSlide(n, total);
@@ -38,6 +44,7 @@ export async function initAudience() {
     overlay.redraw();
     await renderPage(pdf, slide, canvas, stage);
     overlay.resize();
+    slideViewport.resize();
     if (status) status.textContent = `${slide} / ${total}`;
   }
 
@@ -75,6 +82,9 @@ export async function initAudience() {
       case "cursor":
         setCursor(msg);
         break;
+      case "viewport":
+        slideViewport.setState(msg);
+        break;
       case "stroke": {
         const strokes = strokesBySlide.get(msg.slide) ?? [];
         const index = strokes.findIndex((stroke) => stroke.id === msg.id);
@@ -101,6 +111,7 @@ export async function initAudience() {
         }
         frozenAt = null;
         show(msg.slide).then(() => setFrozen(!!msg.frozen));
+        slideViewport.setState(msg.viewport);
         setBlack(!!msg.black);
         break;
     }

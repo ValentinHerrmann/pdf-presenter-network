@@ -28,14 +28,14 @@ export function createSlideViewport({ viewport, content, canPan = () => true, on
     };
   }
 
-  function apply() {
+  function apply(notify = true) {
     const limit = bounds();
     offsetX = clamp(offsetX, -limit.x, limit.x);
     offsetY = clamp(offsetY, -limit.y, limit.y);
     content.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
     content.style.transformOrigin = "center center";
     viewport.classList.toggle("zoomed", scale > MIN_SCALE);
-    onChange?.({ scale, offsetX, offsetY });
+    if (notify) onChange?.({ scale, offsetX, offsetY });
   }
 
   function zoomAt(nextScale, clientX, clientY) {
@@ -64,6 +64,21 @@ export function createSlideViewport({ viewport, content, canPan = () => true, on
     offsetX = 0;
     offsetY = 0;
     apply();
+  }
+
+  function setState(nextState) {
+    if (
+      !nextState ||
+      !Number.isFinite(nextState.scale) ||
+      !Number.isFinite(nextState.offsetX) ||
+      !Number.isFinite(nextState.offsetY)
+    ) {
+      return;
+    }
+    scale = clamp(nextState.scale, MIN_SCALE, MAX_SCALE);
+    offsetX = nextState.offsetX;
+    offsetY = nextState.offsetY;
+    apply(false);
   }
 
   viewport.addEventListener("wheel", (event) => {
@@ -121,5 +136,5 @@ export function createSlideViewport({ viewport, content, canPan = () => true, on
   viewport.addEventListener("pointerup", endPointer);
   viewport.addEventListener("pointercancel", endPointer);
 
-  return { zoomIn, zoomOut, reset, resize: apply, getScale: () => scale };
+  return { zoomIn, zoomOut, reset, setState, resize: apply, getScale: () => scale };
 }

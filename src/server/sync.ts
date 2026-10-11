@@ -20,7 +20,14 @@ interface SyncState {
   slide: number;
   frozen: boolean;
   black: boolean;
+  viewport: ViewportState;
   strokes: Record<string, Stroke[]>;
+}
+
+interface ViewportState {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
 }
 
 interface ClientMessage {
@@ -35,6 +42,9 @@ interface ClientMessage {
   points?: unknown;
   color?: unknown;
   width?: unknown;
+  scale?: unknown;
+  offsetX?: unknown;
+  offsetY?: unknown;
 }
 
 const MAX_STROKE_POINTS = 10_000;
@@ -65,6 +75,13 @@ function validPoint(value: unknown): value is Point {
   if (!value || typeof value !== "object") return false;
   const point = value as Partial<Point>;
   return isNormalized(point.x) && isNormalized(point.y);
+}
+
+function validViewport(message: ClientMessage): message is ClientMessage & ViewportState {
+  return (
+    isFiniteNumber(message.scale) && message.scale >= 1 && message.scale <= 4 &&
+    isFiniteNumber(message.offsetX) && isFiniteNumber(message.offsetY)
+  );
 }
 
 function validStroke(message: ClientMessage): message is ClientMessage & {
@@ -104,6 +121,7 @@ function snapshot(state: SyncState): object {
     slide: state.slide,
     frozen: state.frozen,
     black: state.black,
+    viewport: state.viewport,
     strokes: state.strokes,
   };
 }
@@ -116,6 +134,7 @@ export function attachSyncServer(server: Server): () => Promise<void> {
     slide: 1,
     frozen: false,
     black: false,
+    viewport: { scale: 1, offsetX: 0, offsetY: 0 },
     strokes: {},
   };
 
@@ -142,6 +161,15 @@ export function attachSyncServer(server: Server): () => Promise<void> {
           if (!validSlide(message.slide)) return;
           state.slide = message.slide;
           broadcast(clients, { type: "slide", slide: state.slide });
+          break;
+        case "viewport":
+          if (!validViewport(message)) return;
+          state.viewport = {
+            scale: message.scale,
+            offsetX: message.offsetX,
+            offsetY: message.offsetY,
+          };
+          broadcast(clients, { type: "viewport", ...state.viewport });
           break;
         case "freeze":
           if (typeof message.value !== "boolean") return;

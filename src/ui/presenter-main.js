@@ -164,9 +164,10 @@ export async function initPresenter() {
     viewport: currentContainer,
     content: currentCanvas.closest(".slide-stack"),
     canPan: () => selectedTool === "link",
-    onChange: ({ scale }) => {
+    onChange: ({ scale, offsetX, offsetY }) => {
       const zoomReset = document.getElementById("zoom-reset");
       if (zoomReset) zoomReset.textContent = `${Math.round(scale * 100)}%`;
+      socket.send({ type: "viewport", scale, offsetX, offsetY });
     },
   });
 
@@ -217,6 +218,8 @@ export async function initPresenter() {
     } else if (msg.type === "clear-slide" && msg.slide) {
       strokesBySlide.delete(msg.slide);
       if (msg.slide === currentSlide) overlay.redraw();
+    } else if (msg.type === "viewport") {
+      slideViewport.setState(msg);
     }
   });
 

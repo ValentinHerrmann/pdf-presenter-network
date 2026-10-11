@@ -37,6 +37,7 @@ export function createOverlay({
 }) {
   const context = overlay.getContext("2d");
   let activeStroke = null;
+  let activePointerId = null;
   let laser = null;
   let acceptsPointer = false;
 
@@ -79,11 +80,14 @@ export function createOverlay({
   }
 
   function beginStroke(event) {
+    event.stopPropagation();
     if (getTool() === "laser") return;
     const point = pointFromEvent(event, canvas);
     if (!point) return;
-    event.preventDefault();
+    if (activeStroke) return;
+    event?.preventDefault?.();
     overlay.setPointerCapture?.(event.pointerId);
+    activePointerId = event.pointerId;
     if (getTool() === "eraser") {
       activeStroke = { erase: true, point };
       return;
@@ -101,6 +105,7 @@ export function createOverlay({
   }
 
   function moveStroke(event) {
+    event.stopPropagation();
     const point = pointFromEvent(event, canvas);
     if (!point) return;
     if (getTool() === "laser") {
@@ -125,10 +130,24 @@ export function createOverlay({
   }
 
   function endStroke(event) {
+    event?.stopPropagation?.();
     if (!activeStroke) return;
-    event.preventDefault();
-    overlay.releasePointerCapture?.(event.pointerId);
+    if (
+      event?.pointerId !== undefined &&
+      activePointerId !== null &&
+      event.pointerId !== activePointerId
+    ) {
+      return;
+    }
+    event?.preventDefault?.();
+    if (
+      event?.pointerId !== undefined &&
+      overlay.hasPointerCapture?.(event.pointerId)
+    ) {
+      overlay.releasePointerCapture(event.pointerId);
+    }
     activeStroke = null;
+    activePointerId = null;
   }
 
   function leave() {
@@ -136,6 +155,7 @@ export function createOverlay({
   }
 
   function setInteractive(value) {
+    if (!value) endStroke();
     acceptsPointer = value;
     overlay.style.pointerEvents = acceptsPointer ? "auto" : "none";
   }
@@ -145,7 +165,13 @@ export function createOverlay({
     overlay.addEventListener("pointermove", moveStroke);
     overlay.addEventListener("pointerup", endStroke);
     overlay.addEventListener("pointercancel", endStroke);
+    overlay.addEventListener("lostpointercapture", endStroke);
     overlay.addEventListener("pointerleave", leave);
+    window.addEventListener("pointerup", endStroke);
+    window.addEventListener("pointercancel", endStroke);
+    window.addEventListener("blur", endStroke);
+    window.addEventListener("pagehide", endStroke);
+    document.addEventListener("visibilitychange", endStroke);
   }
 
   setInteractive(interactive);
