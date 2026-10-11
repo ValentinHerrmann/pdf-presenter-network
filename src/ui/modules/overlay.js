@@ -38,6 +38,7 @@ export function createOverlay({
   const context = overlay.getContext("2d");
   let activeStroke = null;
   let laser = null;
+  let acceptsPointer = false;
 
   function resize() {
     const width = canvas.clientWidth;
@@ -134,6 +135,11 @@ export function createOverlay({
     if (getTool() === "laser") onLaser({ hidden: true });
   }
 
+  function setInteractive(value) {
+    acceptsPointer = value;
+    overlay.style.pointerEvents = acceptsPointer ? "auto" : "none";
+  }
+
   if (interactive) {
     overlay.addEventListener("pointerdown", beginStroke);
     overlay.addEventListener("pointermove", moveStroke);
@@ -142,5 +148,7 @@ export function createOverlay({
     overlay.addEventListener("pointerleave", leave);
   }
 
-  return { resize, redraw, setLaser };
+  setInteractive(interactive);
+
+  return { resize, redraw, setLaser, setInteractive };
 }

@@ -19,6 +19,7 @@ import { createGridView } from "./modules/grid-view.js";
 import { createCursorSync } from "./modules/cursor-sync.js";
 import { createWebSocketTransport } from "./modules/websocket.js";
 import { createOverlay } from "./modules/overlay.js";
+import { createLinkLayer } from "./modules/link-layer.js";
 import { readSlideDurations } from "./modules/slide-duration.js";
 
 export async function initPresenter() {
@@ -41,6 +42,7 @@ export async function initPresenter() {
   const pdfNameEl = document.getElementById("pdf-name");
   const gridBtn = document.getElementById("grid-btn");
   const cursorSyncBtn = document.getElementById("cursor-sync-btn");
+  const linkLayerEl = document.getElementById("link-layer");
   const overlayCanvas = document.getElementById("overlay-layer");
 
   if (pdfNameEl && config.pdfName) {
@@ -65,8 +67,9 @@ export async function initPresenter() {
 
   const socket = createWebSocketTransport("presenter");
   const strokesBySlide = new Map();
-  let selectedTool = "pen";
+  let selectedTool = "link";
   let overlay;
+  let linkLayer;
   let transitionTimer = null;
 
   function scheduleTransition() {
@@ -112,6 +115,7 @@ export async function initPresenter() {
         ? renderPage(pdf, currentSlide + 1, nextCanvas, nextContainer)
         : clearNext(),
     ]);
+    await linkLayer?.render(currentSlide);
     socket.send({ type: "slide", slide: currentSlide });
     overlay?.resize();
     scheduleTransition();
@@ -145,6 +149,13 @@ export async function initPresenter() {
     onLaser: (point) => socket.send({ type: "cursor", ...point }),
   });
 
+  linkLayer = createLinkLayer({
+    pdf,
+    canvas: currentCanvas,
+    layer: linkLayerEl,
+    onNavigate: (slide) => show(slide),
+  });
+
   for (const button of document.querySelectorAll("[data-tool]")) {
     button.addEventListener("click", () => {
       selectedTool = button.dataset.tool;
@@ -153,8 +164,11 @@ export async function initPresenter() {
         candidate.classList.toggle("active", active);
         candidate.setAttribute("aria-pressed", String(active));
       }
+      overlay.setInteractive(selectedTool !== "link");
+      linkLayerEl?.classList.toggle("active", selectedTool === "link");
     });
   }
+  linkLayerEl?.classList.add("active");
 
   socket.onMessage((msg) => {
     if (msg.type === "stroke" && msg.slide && msg.id) {

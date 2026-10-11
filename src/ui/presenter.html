@@ -16,6 +16,7 @@
           <div class="canvas-wrap">
             <div class="slide-stack">
               <canvas id="current-canvas"></canvas>
+              <div id="link-layer" class="link-layer" aria-hidden="true"></div>
               <canvas id="overlay-layer" class="overlay-layer"></canvas>
             </div>
           </div>
@@ -108,7 +109,8 @@
           >◉ Cursor sync: off</button>
         </div>
         <div class="drawing-tools" role="toolbar" aria-label="Drawing tools">
-          <button type="button" class="btn tool-btn active" data-tool="pen" aria-pressed="true">Pen</button>
+          <button type="button" class="btn tool-btn active" data-tool="link" aria-pressed="true">Link</button>
+          <button type="button" class="btn tool-btn" data-tool="pen" aria-pressed="false">Pen</button>
           <button type="button" class="btn tool-btn" data-tool="eraser" aria-pressed="false">Eraser</button>
           <button type="button" class="btn tool-btn" data-tool="laser" aria-pressed="false">Laser</button>
         </div>

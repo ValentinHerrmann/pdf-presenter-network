@@ -57,6 +57,23 @@ body.audience {
   pointer-events: none;
 }
 
+.link-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.link-layer.active {
+  pointer-events: auto;
+}
+
+.slide-link {
+  position: absolute;
+  display: block;
+  cursor: pointer;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -304,6 +321,10 @@ body.presenter {
 .presenter .canvas-wrap .overlay-layer {
   pointer-events: auto;
   cursor: crosshair;
+}
+
+.presenter .canvas-wrap .overlay-layer[style*="pointer-events: none"] {
+  pointer-events: none;
 }
 
 .drawing-tools {
