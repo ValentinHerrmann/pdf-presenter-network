@@ -47,14 +47,21 @@ export async function renderPage(pdf, pageNumber, canvas, container = canvas?.pa
   const scale = Math.min(maxW / unscaled.width, maxH / unscaled.height);
   const viewport = page.getViewport({ scale });
 
-  canvas.width = Math.floor(viewport.width * dpr);
-  canvas.height = Math.floor(viewport.height * dpr);
+  const buffer = document.createElement("canvas");
+  buffer.width = Math.floor(viewport.width * dpr);
+  buffer.height = Math.floor(viewport.height * dpr);
+
+  const bufferContext = buffer.getContext("2d");
+  bufferContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+  await page.render({ canvasContext: bufferContext, viewport }).promise;
+
+  canvas.width = buffer.width;
+  canvas.height = buffer.height;
   canvas.style.width = `${Math.floor(viewport.width)}px`;
   canvas.style.height = `${Math.floor(viewport.height)}px`;
-
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  await page.render({ canvasContext: ctx, viewport }).promise;
+  const context = canvas.getContext("2d");
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.drawImage(buffer, 0, 0);
 }
 
 export function clampSlide(n, total) {
