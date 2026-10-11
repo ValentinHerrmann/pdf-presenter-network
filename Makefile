@@ -1,4 +1,4 @@
-.PHONY: help install build check run run-presenter gen test clean distclean
+.PHONY: help install install-linux build check run run-presenter gen test clean distclean
 
 PDF ?= test/fixtures/sample.pdf
 PORT ?= 3000
@@ -8,6 +8,7 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  install       Install dependencies with pnpm"
+	@echo "  install-linux Install the Linux app, service, and Chrome app launcher"
 	@echo "  build         Build the CLI bundle with tsup"
 	@echo "  check         Type-check with tsc --noEmit"
 	@echo "  run           Build, then serve \$$PDF (default: $(PDF))"
@@ -23,6 +24,9 @@ help:
 
 install:
 	pnpm install
+
+install-linux:
+	sh scripts/install-linux.sh
 
 build:
 	pnpm build

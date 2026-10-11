@@ -78,6 +78,43 @@ pdf-presenter slides.pdf
 
 Requires Node.js ≥ 18.
 
+### Install the Linux desktop app
+
+On Linux, install the desktop launcher and a systemd service for a directory of
+PDFs:
+
+```bash
+sh scripts/install-linux.sh
+```
+
+An optional directory argument can be supplied when you want a specific
+collection to appear in the initial listing:
+
+```bash
+sh scripts/install-linux.sh /path/to/your/pdf-directory
+```
+
+The installer:
+
+- serves the initial directory on HTTP port 80, so the audience view is at
+  `http://<hostname>/` and the file browser is at `http://<hostname>/list`;
+- installs **PDF Presenter Network** in the application menu;
+- opens `/list` in a separate Chrome/Chromium app window using an isolated
+  browser profile;
+- starts the server automatically through systemd.
+
+Binding port 80 requires administrator permission during installation. The
+service itself runs as the installing user and only receives the
+`CAP_NET_BIND_SERVICE` capability. The hostname defaults to the computer's
+short hostname; set `PDF_PRESENTER_HOST=vh` when installing if needed.
+
+The directory is only the starting point for `/list`. The **Open PDF** button
+uses the browser's file picker and can upload a PDF from any location on the
+computer; it does not need to be inside that directory.
+
+The listing page includes a web app manifest, so Chrome or Chromium can also
+install it directly from the browser's install icon.
+
 ### Present to another device on your LAN
 
 The server listens on all network interfaces. Start the presentation on the host computer, then open the audience URL from another device using the host's LAN address:
