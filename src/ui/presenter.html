@@ -84,15 +84,30 @@
               <button type="button" class="btn tool-btn active" data-tool="link" aria-label="Link" title="Link" aria-pressed="true">
                 <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V5a2 2 0 0 1 4 0v4h1V3a2 2 0 1 1 4 0v6h1V5a2 2 0 1 1 4 0v9c0 4-3 7-7 7h-2c-2 0-3-1-4-2l-4-5a2 2 0 0 1 3-3l2 2Z" /></svg>
               </button>
-              <button type="button" class="btn tool-btn" data-tool="pen" aria-label="Pen" title="Pen" aria-pressed="false">
-                <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /><path d="m13.5 7.5 3 3" /><path d="M4 20h5" /></svg>
-              </button>
+              <div class="drawing-tool-group">
+                <button type="button" class="btn tool-btn" data-tool="pen" aria-label="Pen" title="Pen" aria-pressed="false">
+                  <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" /><path d="m13.5 7.5 3 3" /><path d="M4 20h5" /></svg>
+                </button>
+                <div class="color-swatches" role="group" aria-label="Pen color">
+                  <button type="button" class="color-swatch active" data-color-target="pen" data-color="#2563eb" aria-label="Blue pen" aria-pressed="true" style="--swatch-color: #2563eb"></button>
+                  <button type="button" class="color-swatch" data-color-target="pen" data-color="#111827" aria-label="Black pen" aria-pressed="false" style="--swatch-color: #111827"></button>
+                  <button type="button" class="color-swatch" data-color-target="pen" data-color="#dc2626" aria-label="Red pen" aria-pressed="false" style="--swatch-color: #dc2626"></button>
+                  <button type="button" class="color-swatch" data-color-target="pen" data-color="#16a34a" aria-label="Green pen" aria-pressed="false" style="--swatch-color: #16a34a"></button>
+                </div>
+              </div>
               <button type="button" class="btn tool-btn" data-tool="eraser" aria-label="Eraser" title="Eraser" aria-pressed="false">
                 <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 21-3.5-3.5a2.1 2.1 0 0 1 0-3L13.5 4.5a2.1 2.1 0 0 1 3 0l3 3a2.1 2.1 0 0 1 0 3L11 21H7Z" /><path d="m14 14 4 4" /><path d="M11 21h9" /></svg>
               </button>
-              <button type="button" class="btn tool-btn" data-tool="laser" aria-label="Laser pointer" title="Laser pointer" aria-pressed="false">
-                <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 8-8" /><path d="m3 21 3-3" /><path d="m13 11 2 2" /><circle cx="18" cy="6" r="3" /><path d="M18 1v2M18 9v2M13 6h2M21 6h2" /></svg>
-              </button>
+              <div class="drawing-tool-group">
+                <button type="button" class="btn tool-btn" data-tool="laser" aria-label="Laser pointer" title="Laser pointer" aria-pressed="false">
+                  <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 8-8" /><path d="m3 21 3-3" /><path d="m13 11 2 2" /><circle cx="18" cy="6" r="3" /><path d="M18 1v2M18 9v2M13 6h2M21 6h2" /></svg>
+                </button>
+                <div class="color-swatches" role="group" aria-label="Laser color">
+                  <button type="button" class="color-swatch active" data-color-target="laser" data-color="#2563eb" aria-label="Blue laser" aria-pressed="true" style="--swatch-color: #2563eb"></button>
+                  <button type="button" class="color-swatch" data-color-target="laser" data-color="#dc2626" aria-label="Red laser" aria-pressed="false" style="--swatch-color: #dc2626"></button>
+                  <button type="button" class="color-swatch" data-color-target="laser" data-color="#16a34a" aria-label="Green laser" aria-pressed="false" style="--swatch-color: #16a34a"></button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="slide-control-panel">

@@ -30,6 +30,7 @@ export function createOverlay({
   overlay,
   interactive = false,
   getTool = () => "pen",
+  getPenColor = () => "#2563eb",
   getStrokes = () => [],
   onStroke = () => {},
   onErase = () => {},
@@ -67,8 +68,8 @@ export function createOverlay({
     const height = canvas.clientHeight;
     context.beginPath();
     context.arc(point.x * width, point.y * height, 8, 0, Math.PI * 2);
-    context.fillStyle = "rgba(255, 45, 45, 0.95)";
-    context.shadowColor = "rgba(255, 45, 45, 0.8)";
+    context.fillStyle = point.color || "#2563eb";
+    context.shadowColor = point.color || "#2563eb";
     context.shadowBlur = 12;
     context.fill();
     context.shadowBlur = 0;
@@ -97,7 +98,7 @@ export function createOverlay({
       stroke: {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         points: [point],
-        color: "#ff4f4f",
+        color: getPenColor(),
         width: 4,
       },
     };

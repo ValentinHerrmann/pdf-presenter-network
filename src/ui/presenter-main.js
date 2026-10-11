@@ -98,6 +98,8 @@ export async function initPresenter() {
   const socket = createWebSocketTransport("presenter");
   const strokesBySlide = new Map();
   let selectedTool = "link";
+  let penColor = "#2563eb";
+  let laserColor = "#2563eb";
   let overlay;
   let linkLayer;
   let transitionTimer = null;
@@ -162,6 +164,7 @@ export async function initPresenter() {
     overlay: overlayCanvas,
     interactive: true,
     getTool: () => selectedTool,
+    getPenColor: () => penColor,
     getStrokes: () => strokesForSlide(currentSlide),
     onStroke: (stroke) => {
       const strokes = strokesBySlide.get(currentSlide) ?? [];
@@ -178,7 +181,7 @@ export async function initPresenter() {
       overlay.redraw();
       socket.send({ type: "erase-stroke", slide: currentSlide, id });
     },
-    onLaser: (point) => socket.send({ type: "cursor", ...point }),
+    onLaser: (point) => socket.send({ type: "cursor", ...point, color: laserColor }),
   });
 
   linkLayer = createLinkLayer({
@@ -225,6 +228,21 @@ export async function initPresenter() {
       }
       overlay.setInteractive(selectedTool !== "link");
       linkLayerEl?.classList.toggle("active", selectedTool === "link");
+    });
+  }
+  for (const button of document.querySelectorAll("[data-color]")) {
+    button.addEventListener("click", () => {
+      const color = button.dataset.color;
+      const target = button.dataset.colorTarget;
+      if (!color || (target !== "pen" && target !== "laser")) return;
+      if (target === "pen") penColor = color;
+      else laserColor = color;
+      document.querySelector(`[data-tool="${target}"]`)?.click();
+      for (const candidate of document.querySelectorAll(`[data-color-target="${target}"]`)) {
+        const active = candidate === button;
+        candidate.classList.toggle("active", active);
+        candidate.setAttribute("aria-pressed", String(active));
+      }
     });
   }
   linkLayerEl?.classList.add("active");

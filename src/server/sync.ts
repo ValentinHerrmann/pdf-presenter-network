@@ -47,6 +47,8 @@ interface ClientMessage {
   offsetY?: unknown;
 }
 
+const LASER_COLORS = new Set(["#2563eb", "#dc2626", "#16a34a"]);
+
 const MAX_STROKE_POINTS = 10_000;
 const MAX_STROKES_PER_SLIDE = 2_000;
 
@@ -185,7 +187,14 @@ export function attachSyncServer(server: Server): () => Promise<void> {
           if (message.hidden === true) {
             broadcast(clients, { type: "cursor", hidden: true });
           } else if (isNormalized(message.x) && isNormalized(message.y)) {
-            broadcast(clients, { type: "cursor", x: message.x, y: message.y });
+            broadcast(clients, {
+              type: "cursor",
+              x: message.x,
+              y: message.y,
+              color: LASER_COLORS.has(message.color as string)
+                ? message.color
+                : "#2563eb",
+            });
           }
           break;
         case "stroke":

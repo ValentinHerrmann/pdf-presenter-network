@@ -9,6 +9,7 @@ export interface ListingRouteDeps {
   waitingHtml: string;
   getCurrentPdf: () => string | null;
   getCurrentAudienceHtml: () => string | null;
+  getCurrentPresenterHtml: () => string | null;
   getStatuses?: () => PdfNotesStatus[];
 }
 
@@ -41,6 +42,13 @@ export async function handleListingRoutes(
 
   if (pathname === "/list") {
     send(res, 200, deps.listingHtml, MIME[".html"]);
+    return "handled";
+  }
+
+  if (pathname === "/presenter") {
+    const presenterHtml = deps.getCurrentPresenterHtml();
+    if (presenterHtml) send(res, 200, presenterHtml, MIME[".html"]);
+    else send(res, 503, "Presenter is waiting for a PDF");
     return "handled";
   }
 

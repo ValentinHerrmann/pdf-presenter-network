@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { existsSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type { RouteResult } from "../types.js";
-import { notFound, isSafeFilename } from "../http-utils.js";
+import { notFound, isSafeFilename, send } from "../http-utils.js";
 import { renderHtml } from "../html-render.js";
 import { createNotesUpdater } from "../notes-store.js";
 import { notesPathFor } from "../../utils.js";
@@ -16,7 +16,11 @@ export interface PdfProxyDeps {
   pdfjsDir: string;
   timerMinutes?: number;
   resolvePdfPath?: (pdfName: string) => string | undefined;
-  onPresenter?: (pdfName: string, audienceHtml: string) => void;
+  onPresenter?: (
+    pdfName: string,
+    audienceHtml: string,
+    presenterHtml: string,
+  ) => void;
 }
 
 interface PerPdfCache {
@@ -91,7 +95,11 @@ export async function handlePdfProxyRoutes(
 
   const notesPath = notesPathFor(pdfPath);
   const perPdf = await getOrCreateCache(pdfName, pdfPath, deps);
-  if (subPath === "/presenter") deps.onPresenter?.(pdfName, perPdf.audienceHtml);
+  if (subPath === "/presenter") {
+    deps.onPresenter?.(pdfName, perPdf.audienceHtml, perPdf.presenterHtml);
+    send(res, 303, "", "text/plain; charset=utf-8", { Location: "/presenter" });
+    return "handled";
+  }
 
   // Build a sub-URL with the prefix stripped
   const subUrl = new URL(subPath + url.search, `http://localhost`);

@@ -1032,6 +1032,35 @@ button.timer:focus-visible {
   padding: 7px;
 }
 
+.drawing-tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.color-swatches {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  box-shadow: 0 0 0 1px #4a5260;
+  cursor: pointer;
+}
+
+.color-swatch.active {
+  border-color: #f4f7fb;
+  box-shadow: 0 0 0 1px #7fd4a0;
+}
+
 .tool-icon {
   width: 26px;
   height: 26px;

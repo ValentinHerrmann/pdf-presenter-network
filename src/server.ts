@@ -115,6 +115,7 @@ export async function startDirectoryServer(
   const uploadedPdfPaths = new Map<string, string>();
   let currentPdfName: string | null = null;
   let currentAudienceHtml: string | null = null;
+  let currentPresenterHtml: string | null = null;
 
   async function savePdf(name: string, data: Buffer): Promise<string> {
     const baseName = basename(name).replace(/\.pdf$/i, "");
@@ -192,6 +193,7 @@ export async function startDirectoryServer(
           waitingHtml,
           getCurrentPdf: () => currentPdfName,
           getCurrentAudienceHtml: () => currentAudienceHtml,
+          getCurrentPresenterHtml: () => currentPresenterHtml,
           getStatuses,
         })) === "handled"
       )
@@ -204,9 +206,10 @@ export async function startDirectoryServer(
           pdfjsDir,
           timerMinutes: config.timerMinutes,
           resolvePdfPath: (name) => uploadedPdfPaths.get(name),
-          onPresenter: (name, audienceHtml) => {
+          onPresenter: (name, audienceHtml, presenterHtml) => {
             currentPdfName = name;
             currentAudienceHtml = audienceHtml;
+            currentPresenterHtml = presenterHtml;
           },
         })) === "handled"
       )
