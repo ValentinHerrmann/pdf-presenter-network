@@ -1,9 +1,9 @@
 // Cursor sync: mirrors the presenter's mouse position over the Current
 // canvas to the audience view as a red laser dot. Coordinates are sent
-// normalized ([0,1]) over the existing BroadcastChannel and throttled
+// normalized ([0,1]) over the WebSocket and throttled
 // via requestAnimationFrame so a fast drag won't spam messages.
 
-export function createCursorSync({ canvas, channel }) {
+export function createCursorSync({ canvas, send }) {
   let enabled = false;
   let pending = null; // {x, y} | null
   let rafId = 0;
@@ -13,7 +13,7 @@ export function createCursorSync({ canvas, channel }) {
     rafId = 0;
     if (!enabled) return;
     if (!pending) return;
-    channel.postMessage({ type: "cursor", x: pending.x, y: pending.y });
+    send({ type: "cursor", x: pending.x, y: pending.y });
     hiddenPosted = false;
     pending = null;
   }
@@ -44,7 +44,7 @@ export function createCursorSync({ canvas, channel }) {
       cancelAnimationFrame(rafId);
       rafId = 0;
     }
-    channel.postMessage({ type: "cursor", hidden: true });
+    send({ type: "cursor", hidden: true });
     hiddenPosted = true;
   }
 

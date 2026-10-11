@@ -14,6 +14,7 @@ import { handleStaticRoutes } from "./server/routes/static.js";
 import { handleListingRoutes } from "./server/routes/listing.js";
 import { handlePdfProxyRoutes } from "./server/routes/pdf-proxy.js";
 import { handleSharedAssetRoutes } from "./server/routes/static.js";
+import { attachSyncServer } from "./server/sync.js";
 
 export type { ServerConfig, DirectoryConfig, StartedServer } from "./server/types.js";
 
@@ -78,10 +79,11 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
       res.end(`Internal Server Error: ${msg}`);
     });
   });
+  const stopSync = attachSyncServer(server);
 
   await new Promise<void>((resolveP, rejectP) => {
     server.once("error", rejectP);
-    server.listen(config.port, "127.0.0.1", () => {
+    server.listen(config.port, "0.0.0.0", () => {
       server.off("error", rejectP);
       resolveP();
     });
@@ -91,7 +93,9 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
     port: config.port,
     stop: () =>
       new Promise<void>((resolveP, rejectP) => {
-        server.close((err) => (err ? rejectP(err) : resolveP()));
+        stopSync()
+          .then(() => server.close((err) => (err ? rejectP(err) : resolveP())))
+          .catch(rejectP);
       }),
   };
 }
@@ -156,10 +160,11 @@ export async function startDirectoryServer(
       res.end(`Internal Server Error: ${msg}`);
     });
   });
+  const stopSync = attachSyncServer(server);
 
   await new Promise<void>((resolveP, rejectP) => {
     server.once("error", rejectP);
-    server.listen(config.port, "127.0.0.1", () => {
+    server.listen(config.port, "0.0.0.0", () => {
       server.off("error", rejectP);
       resolveP();
     });
@@ -169,7 +174,9 @@ export async function startDirectoryServer(
     port: config.port,
     stop: () =>
       new Promise<void>((resolveP, rejectP) => {
-        server.close((err) => (err ? rejectP(err) : resolveP()));
+        stopSync()
+          .then(() => server.close((err) => (err ? rejectP(err) : resolveP())))
+          .catch(rejectP);
       }),
   };
 }

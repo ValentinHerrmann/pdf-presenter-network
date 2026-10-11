@@ -41,7 +41,7 @@ npx pdf-presenter slides.pdf -t 20     # 20 分鐘倒數計時
 - 用 PDF 檢視器開啟，但就失去講者備註和下一張預覽，或
 - 把投影片轉成 HTML（然後跟版面、字型、建構工具纏鬥）。
 
-`pdf-presenter` 走第三條路：保留 PDF 原狀，用瀏覽器裡的 `pdf.js` 渲染，並在上面疊一個主講者視窗（目前 + 下一張 + 備註 + 計時器）。投影片狀態透過 `BroadcastChannel` 在觀眾與主講者視窗之間同步 —— 不用 WebSocket，不用跟伺服器來回通訊。
+`pdf-presenter` 走第三條路：保留 PDF 原狀，用瀏覽器裡的 `pdf.js` 渲染，並在上面疊一個主講者視窗（目前 + 下一張 + 備註 + 計時器）。投影片狀態透過本機伺服器的 WebSocket 同步，因此同一區域網路上的其他裝置也能跟隨主講者。
 
 ## 功能特色
 
@@ -50,7 +50,9 @@ npx pdf-presenter slides.pdf -t 20     # 20 分鐘倒數計時
 - **講者備註** 使用簡單的 JSON 檔。可用 `-gn` 從 PDF 文字產生樣板，或**直接在主講者視圖中編輯備註** —— 變更會自動寫回 `slides.notes.json`（防抖動延遲儲存）。
 - **計時器。** 預設為計時，或用 `--timer <分鐘>` 倒數計時。最後 5 分鐘轉黃、最後 1 分鐘轉紅。
 - **鍵盤優先。** 方向鍵、`Space`、`PageUp/Down`、`Home/End`，加上 `F` 凍結、`B` 黑畫面、`R` 重置計時器。
-- **多視窗同步** 透過 `BroadcastChannel` —— 主講者視窗驅動同一瀏覽器內的一個或多個觀眾視窗。
+- **區域網路同步** 透過 WebSocket —— 主講者視窗可驅動同一台電腦或區域網路上其他裝置的觀眾視窗。
+- **註記工具。** 可使用畫筆、橡皮擦完整筆畫，或以滑鼠懸停顯示雷射指標。註記會依投影片保存並即時同步給所有觀眾。
+- **定時投影片。** 使用 `\\transduration{秒數}` 的 Beamer PDF 會由主講者自動換頁，換頁結果同步給所有觀眾。
 - **無原生相依。** 純 JavaScript。由 `pdf.js` 處理重活。
 
 ## 安裝
@@ -69,6 +71,20 @@ pdf-presenter slides.pdf
 ```
 
 需要 Node.js ≥ 18。
+
+### 在區域網路上的其他裝置播放
+
+伺服器會監聽所有網路介面。在主機啟動簡報後，從其他裝置使用主機的區域網路位址開啟觀眾頁面：
+
+```text
+http://192.168.1.42:3000/
+```
+
+主機上的主講者視窗仍使用輸出的 `localhost` URL。觀眾裝置必須位於同一網路，且主機防火牆必須允許所選連接埠的 TCP 連入。換頁控制權由主講者掌握。
+
+主講者工具列提供 **畫筆**、**橡皮擦** 與 **雷射**。畫筆註記會在目前工作階段以投影片分別保存；換頁時會清除畫面上的圖層，返回該頁時再還原。
+
+對 Beamer 簡報而言，包含 `\\transduration{5}` 的頁面會在五秒後自動換頁。沒有正數秒數的頁面維持手動換頁，凍結或黑畫面時會暫停自動換頁。
 
 ## 用法
 
@@ -197,7 +213,8 @@ pdf-presenter slides.pdf --timer 20
   - `/notes.json` → 備註檔（若不存在則回傳空白樣板）
   - `/assets/*` → 前端 JS/CSS
   - `/assets/pdfjs/*` → `pdfjs-dist` 函式庫和 worker
-- 主講者視窗透過 `BroadcastChannel("pdf-presenter")` 廣播投影片變更事件，同一瀏覽器內的觀眾視窗監聽並重新渲染。
+- 主講者與觀眾會連線到附加在 HTTP 伺服器上的 WebSocket。主講者是投影片、凍結、黑畫面、游標與註記事件的來源；伺服器會保留記憶體中的狀態快照，讓之後加入的觀眾立即同步。
+- 註記 canvas 疊在 PDF.js canvas 上方，座標會依投影片正規化，因此不同裝置解析度仍能保持對齊。
 - `-gn` 的文字擷取使用 `pdfjs-dist` 的 legacy build，能在 Node 中執行而不需要 DOM 或 canvas。
 
 ## 開發
@@ -224,7 +241,7 @@ pdf-presenter/
 │       ├── audience.html
 │       ├── presenter.html
 │       ├── presenter.css
-│       └── presenter.js       # pdf.js 渲染 + BroadcastChannel 同步
+│       └── presenter.js       # pdf.js 渲染 + WebSocket 同步 + 註記圖層
 └── test/fixtures/             # 煙霧測試用 PDF 範例
 ```
 

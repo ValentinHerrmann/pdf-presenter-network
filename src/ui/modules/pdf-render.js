@@ -4,8 +4,6 @@ import * as pdfjsLib from "/assets/pdfjs/build/pdf.mjs";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/assets/pdfjs/build/pdf.worker.mjs";
 
-export const CHANNEL_NAME = "pdf-presenter";
-
 const DEFAULT_CONFIG = {
   pdfUrl: "/slides.pdf",
   notesUrl: "/notes.json",

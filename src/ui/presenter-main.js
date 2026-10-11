@@ -3,7 +3,6 @@
 // ./modules/ and is composed here via factory functions.
 
 import {
-  CHANNEL_NAME,
   readConfig,
   loadDocument,
   loadNotes,
@@ -18,11 +17,15 @@ import { createRecorder } from "./modules/recording.js";
 import { createResizableLayout } from "./modules/resizable-layout.js";
 import { createGridView } from "./modules/grid-view.js";
 import { createCursorSync } from "./modules/cursor-sync.js";
+import { createWebSocketTransport } from "./modules/websocket.js";
+import { createOverlay } from "./modules/overlay.js";
+import { readSlideDurations } from "./modules/slide-duration.js";
 
 export async function initPresenter() {
   const config = readConfig();
   const pdf = await loadDocument(config.pdfUrl);
   const total = pdf.numPages;
+  const slideDurations = await readSlideDurations(pdf);
   const notesFile = await loadNotes(config.notesUrl);
   const notes = (notesFile && notesFile.notes) || {};
 
@@ -36,6 +39,7 @@ export async function initPresenter() {
   const pdfNameEl = document.getElementById("pdf-name");
   const gridBtn = document.getElementById("grid-btn");
   const cursorSyncBtn = document.getElementById("cursor-sync-btn");
+  const overlayCanvas = document.getElementById("overlay-layer");
 
   if (pdfNameEl && config.pdfName) {
     pdfNameEl.textContent = config.pdfName;
@@ -57,7 +61,29 @@ export async function initPresenter() {
     window.open(base, "_blank");
   });
 
-  const channel = new BroadcastChannel(CHANNEL_NAME);
+  const socket = createWebSocketTransport("presenter");
+  const strokesBySlide = new Map();
+  let selectedTool = "pen";
+  let overlay;
+  let transitionTimer = null;
+
+  function scheduleTransition() {
+    if (transitionTimer !== null) window.clearTimeout(transitionTimer);
+    transitionTimer = null;
+    const seconds = slideDurations[currentSlide - 1];
+    if (
+      currentSlide >= total ||
+      frozen ||
+      blackedOut ||
+      typeof seconds !== "number"
+    ) {
+      return;
+    }
+    transitionTimer = window.setTimeout(() => {
+      transitionTimer = null;
+      show(currentSlide + 1);
+    }, seconds * 1000);
+  }
   let currentSlide = 1;
   let frozen = false;
   let blackedOut = false;
@@ -84,8 +110,69 @@ export async function initPresenter() {
         ? renderPage(pdf, currentSlide + 1, nextCanvas)
         : clearNext(),
     ]);
-    channel.postMessage({ type: "slide", slide: currentSlide });
+    socket.send({ type: "slide", slide: currentSlide });
+    overlay?.resize();
+    scheduleTransition();
   }
+
+  function strokesForSlide(slide) {
+    return strokesBySlide.get(slide) ?? [];
+  }
+
+  overlay = createOverlay({
+    canvas: currentCanvas,
+    overlay: overlayCanvas,
+    interactive: true,
+    getTool: () => selectedTool,
+    getStrokes: () => strokesForSlide(currentSlide),
+    onStroke: (stroke) => {
+      const strokes = strokesBySlide.get(currentSlide) ?? [];
+      const index = strokes.findIndex((item) => item.id === stroke.id);
+      if (index >= 0) strokes[index] = stroke;
+      else strokes.push(stroke);
+      strokesBySlide.set(currentSlide, strokes);
+      overlay.redraw();
+      socket.send({ type: "stroke", ...stroke, slide: currentSlide });
+    },
+    onErase: (id) => {
+      const strokes = strokesForSlide(currentSlide).filter((stroke) => stroke.id !== id);
+      strokesBySlide.set(currentSlide, strokes);
+      overlay.redraw();
+      socket.send({ type: "erase-stroke", slide: currentSlide, id });
+    },
+    onLaser: (point) => socket.send({ type: "cursor", ...point }),
+  });
+
+  for (const button of document.querySelectorAll("[data-tool]")) {
+    button.addEventListener("click", () => {
+      selectedTool = button.dataset.tool;
+      for (const candidate of document.querySelectorAll("[data-tool]")) {
+        const active = candidate === button;
+        candidate.classList.toggle("active", active);
+        candidate.setAttribute("aria-pressed", String(active));
+      }
+    });
+  }
+
+  socket.onMessage((msg) => {
+    if (msg.type === "stroke" && msg.slide && msg.id) {
+      const strokes = strokesBySlide.get(msg.slide) ?? [];
+      const index = strokes.findIndex((stroke) => stroke.id === msg.id);
+      if (index >= 0) strokes[index] = msg;
+      else strokes.push(msg);
+      strokesBySlide.set(msg.slide, strokes);
+      if (msg.slide === currentSlide) overlay.redraw();
+    } else if (msg.type === "erase-stroke" && msg.slide && msg.id) {
+      strokesBySlide.set(
+        msg.slide,
+        strokesForSlide(msg.slide).filter((stroke) => stroke.id !== msg.id),
+      );
+      if (msg.slide === currentSlide) overlay.redraw();
+    } else if (msg.type === "clear-slide" && msg.slide) {
+      strokesBySlide.delete(msg.slide);
+      if (msg.slide === currentSlide) overlay.redraw();
+    }
+  });
 
   function clearNext() {
     const ctx = nextCanvas.getContext("2d");
@@ -132,12 +219,22 @@ export async function initPresenter() {
 
   function toggleFreeze() {
     frozen = !frozen;
-    channel.postMessage({ type: "freeze", value: frozen });
+    if (frozen) {
+      if (transitionTimer !== null) window.clearTimeout(transitionTimer);
+      transitionTimer = null;
+    }
+    socket.send({ type: "freeze", value: frozen });
+    if (!frozen) scheduleTransition();
   }
 
   function toggleBlack() {
     blackedOut = !blackedOut;
-    channel.postMessage({ type: "black", value: blackedOut });
+    if (blackedOut) {
+      if (transitionTimer !== null) window.clearTimeout(transitionTimer);
+      transitionTimer = null;
+    }
+    socket.send({ type: "black", value: blackedOut });
+    if (!blackedOut) scheduleTransition();
   }
 
   window.addEventListener("keydown", (ev) => {
@@ -178,7 +275,10 @@ export async function initPresenter() {
     }
   });
 
-  window.addEventListener("resize", () => show(currentSlide));
+  window.addEventListener("resize", () => {
+    show(currentSlide);
+    overlay.resize();
+  });
 
   // ---- Timer ----
   const timerResetBtn = document.getElementById("timer-reset");
@@ -198,7 +298,10 @@ export async function initPresenter() {
   if (gridBtn) gridBtn.addEventListener("click", () => gridView.open());
 
   // ---- Cursor sync ----
-  const cursorSync = createCursorSync({ canvas: currentCanvas, channel });
+  const cursorSync = createCursorSync({
+    canvas: currentCanvas,
+    send: (message) => socket.send(message),
+  });
   function updateCursorSyncBtn() {
     if (!cursorSyncBtn) return;
     const on = cursorSync.isEnabled();
@@ -222,8 +325,12 @@ export async function initPresenter() {
     rowDividerLeftEl: document.getElementById("divider-row-left"),
     rightColEl: document.querySelector(".col-right"),
     rowDividerRightEl: document.getElementById("divider-row-right"),
-    onResize: () => show(currentSlide),
+    onResize: () => {
+      show(currentSlide);
+      overlay.resize();
+    },
   });
 
   await show(1);
+  overlay.resize();
 }

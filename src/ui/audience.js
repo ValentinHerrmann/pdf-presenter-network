@@ -1,32 +1,42 @@
 // Audience view entry. Loaded via presenter.js barrel from audience.html.
 
 import {
-  CHANNEL_NAME,
   readConfig,
   loadDocument,
   renderPage,
   clampSlide,
 } from "./modules/pdf-render.js";
+import { createWebSocketTransport } from "./modules/websocket.js";
+import { createOverlay } from "./modules/overlay.js";
 
 export async function initAudience() {
   const config = readConfig();
   const pdf = await loadDocument(config.pdfUrl);
   const total = pdf.numPages;
   const canvas = document.getElementById("slide-canvas");
-  const laserDot = document.getElementById("laser-dot");
+  const overlayCanvas = document.getElementById("overlay-layer");
   const blackOverlay = document.getElementById("black-overlay");
   const freezeIndicator = document.getElementById("freeze-indicator");
   const status = document.getElementById("status");
 
   let currentSlide = 1;
   let frozenAt = null;
-  const channel = new BroadcastChannel(CHANNEL_NAME);
+  const socket = createWebSocketTransport("audience");
+  const strokesBySlide = new Map();
+  const overlay = createOverlay({
+    canvas,
+    overlay: overlayCanvas,
+    getStrokes: () => strokesBySlide.get(currentSlide) ?? [],
+  });
 
   async function show(n) {
     const slide = clampSlide(n, total);
     if (frozenAt !== null) return;
     currentSlide = slide;
+    overlay.setLaser({ hidden: true });
+    overlay.redraw();
     await renderPage(pdf, slide, canvas);
+    overlay.resize();
     if (status) status.textContent = `${slide} / ${total}`;
   }
 
@@ -46,21 +56,10 @@ export async function initAudience() {
   }
 
   function setCursor(msg) {
-    if (!laserDot) return;
-    if (msg.hidden) {
-      laserDot.classList.add("hidden");
-      return;
-    }
-    const rect = canvas.getBoundingClientRect();
-    const x = rect.left + msg.x * rect.width;
-    const y = rect.top + msg.y * rect.height;
-    laserDot.style.left = `${x}px`;
-    laserDot.style.top = `${y}px`;
-    laserDot.classList.remove("hidden");
+    overlay.setLaser(msg);
   }
 
-  channel.addEventListener("message", (ev) => {
-    const msg = ev.data;
+  socket.onMessage((msg) => {
     if (!msg || typeof msg !== "object") return;
     switch (msg.type) {
       case "slide":
@@ -75,8 +74,33 @@ export async function initAudience() {
       case "cursor":
         setCursor(msg);
         break;
-      case "hello":
-        channel.postMessage({ type: "audience-ready" });
+      case "stroke": {
+        const strokes = strokesBySlide.get(msg.slide) ?? [];
+        const index = strokes.findIndex((stroke) => stroke.id === msg.id);
+        if (index >= 0) strokes[index] = msg;
+        else strokes.push(msg);
+        strokesBySlide.set(msg.slide, strokes);
+        if (msg.slide === currentSlide) overlay.redraw();
+        break;
+      }
+      case "erase-stroke":
+        strokesBySlide.set(
+          msg.slide,
+          (strokesBySlide.get(msg.slide) ?? []).filter((stroke) => stroke.id !== msg.id),
+        );
+        if (msg.slide === currentSlide) overlay.redraw();
+        break;
+      case "clear-slide":
+        strokesBySlide.delete(msg.slide);
+        if (msg.slide === currentSlide) overlay.redraw();
+        break;
+      case "snapshot":
+        for (const [slide, strokes] of Object.entries(msg.strokes ?? {})) {
+          strokesBySlide.set(Number(slide), strokes);
+        }
+        frozenAt = null;
+        show(msg.slide).then(() => setFrozen(!!msg.frozen));
+        setBlack(!!msg.black);
         break;
     }
   });
@@ -123,23 +147,18 @@ export async function initAudience() {
     window.open(presenterUrl, "_blank");
   });
 
-  // Keyboard nav (audience can also advance on its own if standalone).
+  // Audience navigation is presenter-authoritative over the network.
   window.addEventListener("keydown", (ev) => {
-    if (ev.key === "ArrowRight" || ev.key === "PageDown" || ev.key === " ") {
-      show(currentSlide + 1);
-      channel.postMessage({ type: "slide", slide: clampSlide(currentSlide, total) });
-    } else if (ev.key === "ArrowLeft" || ev.key === "PageUp") {
-      show(currentSlide - 1);
-      channel.postMessage({ type: "slide", slide: clampSlide(currentSlide, total) });
-    } else if (ev.key === "p" || ev.key === "P") {
+    if (ev.key === "p" || ev.key === "P") {
       window.open(presenterUrl, "pdf-presenter-presenter");
     }
   });
 
   window.addEventListener("resize", () => {
-    if (frozenAt === null) renderPage(pdf, currentSlide, canvas);
+    if (frozenAt === null) {
+      renderPage(pdf, currentSlide, canvas).then(() => overlay.resize());
+    }
   });
 
   await show(1);
-  channel.postMessage({ type: "audience-ready" });
 }

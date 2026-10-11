@@ -46,7 +46,7 @@ Presenting a PDF deck usually means either:
 - Opening the PDF in a viewer and losing speaker notes / next-slide preview, or
 - Converting slides to HTML (and fighting layout, fonts, and build tooling).
 
-`pdf-presenter` takes a third path: keep the PDF as-is, render it with `pdf.js` in the browser, and layer a presenter window (current + next + notes + timer) on top. Slide state syncs between the audience and presenter windows via `BroadcastChannel` — no WebSocket, no server round-trip.
+`pdf-presenter` takes a third path: keep the PDF as-is, render it with `pdf.js` in the browser, and layer a presenter window (current + next + notes + timer) on top. Slide state syncs through the local server over WebSockets, so audience devices on the same LAN can follow the presenter.
 
 ## Features
 
@@ -55,7 +55,9 @@ Presenting a PDF deck usually means either:
 - **Speaker notes** from a simple JSON file. Generate a template from the PDF text with `-gn`, or **edit notes directly in the presenter view** — changes are saved back to `slides.notes.json` automatically (debounced).
 - **Timer.** Count up by default, or count down with `--timer <minutes>`. Colour shifts yellow in the last 5 min, red in the last 1 min.
 - **Keyboard-first.** Arrow keys, `Space`, `PageUp/Down`, `Home/End`, plus `F` freeze, `B` black, `R` reset timer.
-- **Multi-window sync** via `BroadcastChannel` — the presenter window drives one or more audience windows in the same browser.
+- **LAN synchronization** via WebSockets — the presenter window drives audience windows on the same computer or other devices on the local network.
+- **Annotations.** Draw persistent per-slide pen strokes, erase complete strokes, or show a hover laser pointer. Annotations scale with the rendered slide and are replicated live to every audience.
+- **Timed slides.** Beamer PDFs using `\\transduration{seconds}` automatically advance from the presenter. The resulting slide changes are synchronized to every audience.
 - **No native deps.** Pure JavaScript. `pdf.js` does the heavy lifting.
 
 ## Install
@@ -74,6 +76,20 @@ pdf-presenter slides.pdf
 ```
 
 Requires Node.js ≥ 18.
+
+### Present to another device on your LAN
+
+The server listens on all network interfaces. Start the presentation on the host computer, then open the audience URL from another device using the host's LAN address:
+
+```text
+http://192.168.1.42:3000/
+```
+
+Use the printed `localhost` URL for the presenter window on the host. The audience device must be on the same network, and the host firewall must allow inbound TCP connections on the selected port. Audience navigation is presenter-authoritative.
+
+The presenter toolbar provides **Pen**, **Eraser**, and **Laser** tools. Pen strokes are stored in memory per slide for the current session; switching slides clears the visible overlay and restores that slide's strokes when revisited.
+
+For Beamer decks, a page containing `\\transduration{5}` advances after five seconds. Pages without a positive duration remain manual, and freeze/blackout pauses automatic advancement.
 
 ## Usage
 
@@ -202,7 +218,8 @@ Then:
   - `/notes.json` → the notes file (or an empty stub if missing)
   - `/assets/*` → UI JS/CSS
   - `/assets/pdfjs/*` → the `pdfjs-dist` library and worker
-- The presenter window broadcasts slide changes via `BroadcastChannel("pdf-presenter")`. Audience windows in the same browser listen and re-render.
+- The presenter and audience connect to a WebSocket attached to the HTTP server. The presenter is authoritative for slide, freeze, blackout, cursor, and annotation events; the server keeps an in-memory snapshot for newly connected audiences.
+- Overlay canvases sit above the PDF.js canvas. Coordinates are normalized to the rendered slide, so strokes and the laser pointer remain aligned across different device resolutions.
 - Notes text extraction for `-gn` uses the legacy `pdfjs-dist` build, which runs in Node without a DOM or canvas.
 
 ## Development
@@ -229,7 +246,7 @@ pdf-presenter/
 │       ├── audience.html
 │       ├── presenter.html
 │       ├── presenter.css
-│       └── presenter.js       # pdf.js rendering + BroadcastChannel sync
+│       └── presenter.js       # pdf.js rendering + WebSocket sync + overlays
 └── test/fixtures/             # sample PDF for smoke tests
 ```
 

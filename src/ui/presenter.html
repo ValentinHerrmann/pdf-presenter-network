@@ -14,7 +14,10 @@
         <section class="current">
           <header class="panel-title">Current</header>
           <div class="canvas-wrap">
-            <canvas id="current-canvas"></canvas>
+            <div class="slide-stack">
+              <canvas id="current-canvas"></canvas>
+              <canvas id="overlay-layer" class="overlay-layer"></canvas>
+            </div>
           </div>
         </section>
         <div
@@ -103,6 +106,11 @@
             aria-label="Toggle cursor sync"
             aria-pressed="false"
           >◉ Cursor sync: off</button>
+        </div>
+        <div class="drawing-tools" role="toolbar" aria-label="Drawing tools">
+          <button type="button" class="btn tool-btn active" data-tool="pen" aria-pressed="true">Pen</button>
+          <button type="button" class="btn tool-btn" data-tool="eraser" aria-pressed="false">Eraser</button>
+          <button type="button" class="btn tool-btn" data-tool="laser" aria-pressed="false">Laser</button>
         </div>
         <div class="notes-actions">
           <button type="button" id="export-notes" class="btn">Export speaker note</button>
