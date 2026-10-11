@@ -35,14 +35,13 @@ export async function loadNotes(url) {
   }
 }
 
-export async function renderPage(pdf, pageNumber, canvas) {
+export async function renderPage(pdf, pageNumber, canvas, container = canvas?.parentElement) {
   if (!canvas) return;
   const page = await pdf.getPage(pageNumber);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  const wrap = canvas.parentElement;
-  const maxW = wrap ? wrap.clientWidth : window.innerWidth;
-  const maxH = wrap ? wrap.clientHeight : window.innerHeight;
+  const maxW = Math.max(1, container?.clientWidth ?? window.innerWidth);
+  const maxH = Math.max(1, container?.clientHeight ?? window.innerHeight);
 
   const unscaled = page.getViewport({ scale: 1 });
   const scale = Math.min(maxW / unscaled.width, maxH / unscaled.height);

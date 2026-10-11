@@ -14,6 +14,7 @@ export async function initAudience() {
   const pdf = await loadDocument(config.pdfUrl);
   const total = pdf.numPages;
   const canvas = document.getElementById("slide-canvas");
+  const stage = document.getElementById("stage");
   const overlayCanvas = document.getElementById("overlay-layer");
   const blackOverlay = document.getElementById("black-overlay");
   const freezeIndicator = document.getElementById("freeze-indicator");
@@ -35,7 +36,7 @@ export async function initAudience() {
     currentSlide = slide;
     overlay.setLaser({ hidden: true });
     overlay.redraw();
-    await renderPage(pdf, slide, canvas);
+    await renderPage(pdf, slide, canvas, stage);
     overlay.resize();
     if (status) status.textContent = `${slide} / ${total}`;
   }
@@ -156,7 +157,7 @@ export async function initAudience() {
 
   window.addEventListener("resize", () => {
     if (frozenAt === null) {
-      renderPage(pdf, currentSlide, canvas).then(() => overlay.resize());
+      renderPage(pdf, currentSlide, canvas, stage).then(() => overlay.resize());
     }
   });
 

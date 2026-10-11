@@ -31,6 +31,8 @@ export async function initPresenter() {
 
   const currentCanvas = document.getElementById("current-canvas");
   const nextCanvas = document.getElementById("next-canvas");
+  const currentContainer = currentCanvas?.closest(".canvas-wrap");
+  const nextContainer = nextCanvas?.closest(".canvas-wrap");
   const notesBody = document.getElementById("notes-body");
   const notesStatus = document.getElementById("notes-status");
   const notesHint = document.getElementById("notes-hint");
@@ -105,9 +107,9 @@ export async function initPresenter() {
     editor.loadForSlide(currentSlide);
     if (slideChanged) recorder.onSlideChanged(currentSlide);
     await Promise.all([
-      renderPage(pdf, currentSlide, currentCanvas),
+      renderPage(pdf, currentSlide, currentCanvas, currentContainer),
       currentSlide < total
-        ? renderPage(pdf, currentSlide + 1, nextCanvas)
+        ? renderPage(pdf, currentSlide + 1, nextCanvas, nextContainer)
         : clearNext(),
     ]);
     socket.send({ type: "slide", slide: currentSlide });
