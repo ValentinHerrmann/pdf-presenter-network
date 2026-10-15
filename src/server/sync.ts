@@ -1,4 +1,5 @@
-import type { Server } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
+import { MIME, readJsonBody, send } from "./http-utils.js";
 import { WebSocket, WebSocketServer } from "ws";
 
 type Role = "presenter" | "audience";
@@ -128,7 +129,25 @@ function snapshot(state: SyncState): object {
   };
 }
 
-export function attachSyncServer(server: Server): () => Promise<void> {
+const MAX_LOGGED_EVENTS = 1_000;
+const LONG_POLL_TIMEOUT_MS = 20_000;
+
+interface LoggedEvent {
+  seq: number;
+  message: object;
+}
+
+export interface SyncServer {
+  /** HTTP long-poll fallback for networks that block WebSocket upgrades. */
+  handleHttp(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+  ): Promise<"handled" | "skip">;
+  stop(): Promise<void>;
+}
+
+export function attachSyncServer(server: Server): SyncServer {
   const webSocketServer = new WebSocketServer({ server });
   const clients = new Set<WebSocket>();
   const roles = new Map<WebSocket, Role>();
@@ -139,6 +158,160 @@ export function attachSyncServer(server: Server): () => Promise<void> {
     viewport: { scale: 1, offsetX: 0, offsetY: 0 },
     strokes: {},
   };
+  const events: LoggedEvent[] = [];
+  let seq = 0;
+  const waiters = new Set<() => void>();
+
+  function publish(message: object): void {
+    broadcast(clients, message);
+    events.push({ seq: ++seq, message });
+    if (events.length > MAX_LOGGED_EVENTS) events.shift();
+    for (const wake of [...waiters]) wake();
+  }
+
+  function applyPresenterMessage(message: ClientMessage): void {
+    switch (message.type) {
+      case "slide":
+        if (!validSlide(message.slide)) return;
+        state.slide = message.slide;
+        publish({ type: "slide", slide: state.slide });
+        break;
+      case "viewport":
+        if (!validViewport(message)) return;
+        state.viewport = {
+          scale: message.scale,
+          offsetX: message.offsetX,
+          offsetY: message.offsetY,
+        };
+        publish({ type: "viewport", ...state.viewport });
+        break;
+      case "freeze":
+        if (typeof message.value !== "boolean") return;
+        state.frozen = message.value;
+        publish({ type: "freeze", value: state.frozen });
+        break;
+      case "black":
+        if (typeof message.value !== "boolean") return;
+        state.black = message.value;
+        publish({ type: "black", value: state.black });
+        break;
+      case "cursor":
+        if (message.hidden === true) {
+          publish({ type: "cursor", hidden: true });
+        } else if (isNormalized(message.x) && isNormalized(message.y)) {
+          publish({
+            type: "cursor",
+            x: message.x,
+            y: message.y,
+            color: LASER_COLORS.has(message.color as string)
+              ? message.color
+              : "#2563eb",
+          });
+        }
+        break;
+      case "stroke":
+        if (!validStroke(message)) return;
+        {
+          const key = String(message.slide);
+          const strokes = (state.strokes[key] ??= []);
+          const stroke: Stroke = {
+            id: message.id,
+            slide: message.slide,
+            points: message.points,
+            color: message.color,
+            width: message.width,
+          };
+          const index = strokes.findIndex((item) => item.id === message.id);
+          if (index >= 0) strokes[index] = stroke;
+          else {
+            if (strokes.length >= MAX_STROKES_PER_SLIDE) return;
+            strokes.push(stroke);
+          }
+          publish({ type: "stroke", ...stroke });
+        }
+        break;
+      case "erase-stroke":
+        if (!validSlide(message.slide) || typeof message.id !== "string") return;
+        {
+          const key = String(message.slide);
+          const strokes = state.strokes[key] ?? [];
+          state.strokes[key] = strokes.filter((stroke) => stroke.id !== message.id);
+          publish({
+            type: "erase-stroke",
+            slide: message.slide,
+            id: message.id,
+          });
+        }
+        break;
+      case "clear-slide":
+        if (!validSlide(message.slide)) return;
+        delete state.strokes[String(message.slide)];
+        publish({ type: "clear-slide", slide: message.slide });
+        break;
+    }
+  }
+
+  /** Events after `since`, or a snapshot when the client is new or too far behind. */
+  function eventsSince(since: number | null): object[] | null {
+    const oldest = events[0]?.seq ?? seq + 1;
+    if (since === null || since > seq || since < oldest - 1) return [snapshot(state)];
+    if (since === seq) return null;
+    return events.filter((event) => event.seq > since).map((event) => event.message);
+  }
+
+  function respondPoll(res: ServerResponse, messages: object[]): void {
+    send(res, 200, JSON.stringify({ seq, events: messages }), MIME[".json"]);
+  }
+
+  async function handleHttp(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+  ): Promise<"handled" | "skip"> {
+    if (url.pathname !== "/api/sync") return "skip";
+
+    if (req.method === "POST") {
+      let body: unknown;
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        send(res, 400, "Bad Request");
+        return "handled";
+      }
+      if (body && typeof body === "object") {
+        applyPresenterMessage(body as ClientMessage);
+      }
+      send(res, 204, "");
+      return "handled";
+    }
+
+    if (req.method !== "GET") {
+      send(res, 405, "Method Not Allowed");
+      return "handled";
+    }
+
+    const sinceParam = Number(url.searchParams.get("since") ?? NaN);
+    const since = Number.isInteger(sinceParam) ? sinceParam : null;
+    const ready = eventsSince(since);
+    if (ready) {
+      respondPoll(res, ready);
+      return "handled";
+    }
+
+    await new Promise<void>((resolve) => {
+      const finish = () => {
+        clearTimeout(timer);
+        waiters.delete(finish);
+        req.off("close", finish);
+        resolve();
+      };
+      const timer = setTimeout(finish, LONG_POLL_TIMEOUT_MS);
+      waiters.add(finish);
+      req.on("close", finish);
+    });
+    if (!res.destroyed) respondPoll(res, eventsSince(since) ?? []);
+    return "handled";
+  }
 
   webSocketServer.on("connection", (client) => {
     clients.add(client);
@@ -157,86 +330,7 @@ export function attachSyncServer(server: Server): () => Promise<void> {
       }
 
       if (roles.get(client) !== "presenter") return;
-
-      switch (message.type) {
-        case "slide":
-          if (!validSlide(message.slide)) return;
-          state.slide = message.slide;
-          broadcast(clients, { type: "slide", slide: state.slide });
-          break;
-        case "viewport":
-          if (!validViewport(message)) return;
-          state.viewport = {
-            scale: message.scale,
-            offsetX: message.offsetX,
-            offsetY: message.offsetY,
-          };
-          broadcast(clients, { type: "viewport", ...state.viewport });
-          break;
-        case "freeze":
-          if (typeof message.value !== "boolean") return;
-          state.frozen = message.value;
-          broadcast(clients, { type: "freeze", value: state.frozen });
-          break;
-        case "black":
-          if (typeof message.value !== "boolean") return;
-          state.black = message.value;
-          broadcast(clients, { type: "black", value: state.black });
-          break;
-        case "cursor":
-          if (message.hidden === true) {
-            broadcast(clients, { type: "cursor", hidden: true });
-          } else if (isNormalized(message.x) && isNormalized(message.y)) {
-            broadcast(clients, {
-              type: "cursor",
-              x: message.x,
-              y: message.y,
-              color: LASER_COLORS.has(message.color as string)
-                ? message.color
-                : "#2563eb",
-            });
-          }
-          break;
-        case "stroke":
-          if (!validStroke(message)) return;
-          {
-            const key = String(message.slide);
-            const strokes = (state.strokes[key] ??= []);
-            const stroke: Stroke = {
-              id: message.id,
-              slide: message.slide,
-              points: message.points,
-              color: message.color,
-              width: message.width,
-            };
-            const index = strokes.findIndex((item) => item.id === message.id);
-            if (index >= 0) strokes[index] = stroke;
-            else {
-              if (strokes.length >= MAX_STROKES_PER_SLIDE) return;
-              strokes.push(stroke);
-            }
-            broadcast(clients, { type: "stroke", ...stroke });
-          }
-          break;
-        case "erase-stroke":
-          if (!validSlide(message.slide) || typeof message.id !== "string") return;
-          {
-            const key = String(message.slide);
-            const strokes = state.strokes[key] ?? [];
-            state.strokes[key] = strokes.filter((stroke) => stroke.id !== message.id);
-            broadcast(clients, {
-              type: "erase-stroke",
-              slide: message.slide,
-              id: message.id,
-            });
-          }
-          break;
-        case "clear-slide":
-          if (!validSlide(message.slide)) return;
-          delete state.strokes[String(message.slide)];
-          broadcast(clients, { type: "clear-slide", slide: message.slide });
-          break;
-      }
+      applyPresenterMessage(message);
     });
 
     client.on("close", () => {
@@ -249,10 +343,14 @@ export function attachSyncServer(server: Server): () => Promise<void> {
     });
   });
 
-  return () =>
-    new Promise<void>((resolve) => {
-      for (const client of clients) client.terminate();
-      webSocketServer.close();
-      resolve();
-    });
+  return {
+    handleHttp,
+    stop: () =>
+      new Promise<void>((resolve) => {
+        for (const wake of [...waiters]) wake();
+        for (const client of clients) client.terminate();
+        webSocketServer.close();
+        resolve();
+      }),
+  };
 }

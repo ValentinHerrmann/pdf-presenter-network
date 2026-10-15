@@ -37,12 +37,12 @@ afterEach(async () => {
 describe("WebSocket sync relay", () => {
   it("sends snapshots and relays presenter state to audiences", async () => {
     const httpServer = createServer();
-    const stopSync = attachSyncServer(httpServer);
+    const sync = attachSyncServer(httpServer);
     await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
     const address = httpServer.address();
     if (!address || typeof address === "string") throw new Error("Server did not bind");
     resources.push(async () => {
-      await stopSync();
+      await sync.stop();
       await new Promise<void>((resolve) => httpServer.close(() => resolve()));
     });
 
@@ -76,6 +76,62 @@ describe("WebSocket sync relay", () => {
     audience.send(JSON.stringify({ type: "slide", slide: 1 }));
 
     presenter.close();
+    audience.close();
+  });
+});
+
+describe("HTTP long-poll sync fallback", () => {
+  it("serves snapshots, waits for presenter posts, and mirrors them to WebSocket audiences", async () => {
+    const sync = { current: null as ReturnType<typeof attachSyncServer> | null };
+    const httpServer = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      void sync.current!.handleHttp(req, res, url).then((result) => {
+        if (result === "skip") res.writeHead(404).end();
+      });
+    });
+    sync.current = attachSyncServer(httpServer);
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("Server did not bind");
+    resources.push(async () => {
+      await sync.current!.stop();
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    });
+    const base = `http://127.0.0.1:${address.port}/api/sync`;
+
+    const first = (await (await fetch(base)).json()) as {
+      seq: number;
+      events: Array<Record<string, unknown>>;
+    };
+    expect(first.events).toEqual([expect.objectContaining({ type: "snapshot", slide: 1 })]);
+
+    const audience = await openSocket(address.port);
+    const wsMessage = new Promise<Record<string, unknown>>((resolve) => {
+      audience.on("message", (data) => {
+        const message = JSON.parse(data.toString()) as Record<string, unknown>;
+        if (message.type === "slide") resolve(message);
+      });
+    });
+
+    const longPoll = fetch(`${base}?since=${first.seq}`).then((r) => r.json());
+    const post = await fetch(base, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "slide", slide: 3 }),
+    });
+    expect(post.status).toBe(204);
+
+    await expect(longPoll).resolves.toMatchObject({
+      seq: first.seq + 1,
+      events: [{ type: "slide", slide: 3 }],
+    });
+    await expect(wsMessage).resolves.toMatchObject({ type: "slide", slide: 3 });
+
+    const stale = (await (await fetch(`${base}?since=999`)).json()) as {
+      events: Array<Record<string, unknown>>;
+    };
+    expect(stale.events).toEqual([expect.objectContaining({ type: "snapshot", slide: 3 })]);
+
     audience.close();
   });
 });

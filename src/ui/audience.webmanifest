@@ -1,0 +1,20 @@
+{
+  "id": "/audience",
+  "name": "PDF Presenter Audience",
+  "short_name": "Audience",
+  "description": "Fullscreen audience view that follows the presenter.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

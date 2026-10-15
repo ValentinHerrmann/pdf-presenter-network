@@ -39,6 +39,8 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
   ): Promise<void> => {
     const url = new URL(req.url ?? "/", `http://localhost:${config.port}`);
     try {
+      if ((await sync.handleHttp(req, res, url)) === "handled") return;
+
       // Ordering: recording (most specific prefixes) → notes → static catch-all.
       if (
         (await handleRecordingRoutes(req, res, url, {
@@ -84,7 +86,7 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
       res.end(`Internal Server Error: ${msg}`);
     });
   });
-  const stopSync = attachSyncServer(server);
+  const sync = attachSyncServer(server);
 
   await new Promise<void>((resolveP, rejectP) => {
     server.once("error", rejectP);
@@ -98,7 +100,7 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
     port: config.port,
     stop: () =>
       new Promise<void>((resolveP, rejectP) => {
-        stopSync()
+        sync.stop()
           .then(() => server.close((err) => (err ? rejectP(err) : resolveP())))
           .catch(rejectP);
       }),
@@ -154,6 +156,8 @@ export async function startDirectoryServer(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Waiting for presentation</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="manifest" href="/assets/audience.webmanifest" />
     <style>
       :root { color-scheme: dark; }
       html, body { height: 100%; margin: 0; }
@@ -181,6 +185,8 @@ export async function startDirectoryServer(
   ): Promise<void> => {
     const url = new URL(req.url ?? "/", `http://localhost:${config.port}`);
     try {
+      if ((await sync.handleHttp(req, res, url)) === "handled") return;
+
       if (
         (await handleUploadRoutes(req, res, url, { savePdf })) === "handled"
       )
@@ -240,7 +246,7 @@ export async function startDirectoryServer(
       res.end(`Internal Server Error: ${msg}`);
     });
   });
-  const stopSync = attachSyncServer(server);
+  const sync = attachSyncServer(server);
 
   await new Promise<void>((resolveP, rejectP) => {
     server.once("error", rejectP);
@@ -254,7 +260,7 @@ export async function startDirectoryServer(
     port: config.port,
     stop: () =>
       new Promise<void>((resolveP, rejectP) => {
-        stopSync()
+        sync.stop()
           .then(() => rm(uploadDir, { recursive: true, force: true }))
           .then(() => server.close((err) => (err ? rejectP(err) : resolveP())))
           .catch(rejectP);
