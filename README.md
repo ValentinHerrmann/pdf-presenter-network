@@ -39,12 +39,10 @@ This downloads the latest release to `~/.local/share/pdf-presenter-network/app`,
 - **Specific version:** `curl -fsSL …/install.sh | PDF_PRESENTER_VERSION=v1.2.3 sh`
 - **Hostname** shown in URLs (default: short hostname): `PDF_PRESENTER_HOST=vh`
 - **Upgrade:** run the same command again.
-- **Uninstall:**
+- **Uninstall:** removes the service, app-menu entry, CLI link, and `~/.local/share/pdf-presenter-network`.
 
   ```bash
-  sudo systemctl disable --now pdf-presenter-network.service
-  sudo rm /etc/systemd/system/pdf-presenter-network.service
-  rm -rf ~/.local/share/pdf-presenter-network ~/.local/share/applications/pdf-presenter-network.desktop ~/.local/bin/pdf-presenter
+  curl -fsSL https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest/download/uninstall.sh | sh
   ```
 
 ### Without the service
@@ -74,7 +72,7 @@ sh scripts/install-linux.sh [/path/to/pdfs]   # builds, then installs like the r
 
 ### Releasing
 
-Bump `version` in `package.json` and push to `main`. The [Release workflow](.github/workflows/release.yml) tags `vX.Y.Z`, builds `pdf-presenter-network.tar.gz` (bundle, UI, and production `node_modules`), and attaches it with `install.sh` to the GitHub release. Run the workflow manually from the Actions tab to rebuild the assets of the current version.
+Bump `version` in `package.json` and push to `main`. The [Release workflow](.github/workflows/release.yml) tags `vX.Y.Z`, builds `pdf-presenter-network.tar.gz` (bundle, UI, and production `node_modules`), and attaches it with `install.sh` and `uninstall.sh` to the GitHub release. Run the workflow manually from the Actions tab to rebuild the assets of the current version.
 
 ## Quick start
 
