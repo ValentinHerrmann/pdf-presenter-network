@@ -141,7 +141,10 @@ export async function initPresenter() {
     currentSlide = target;
     counter.textContent = `${currentSlide} / ${total}`;
     editor.loadForSlide(currentSlide);
-    if (slideChanged) recorder.onSlideChanged(currentSlide);
+    if (slideChanged) {
+      recorder.onSlideChanged(currentSlide);
+      timer.resetSlide();
+    }
     await Promise.all([
       renderPage(pdf, currentSlide, currentCanvas, currentContainer),
       currentSlide < total
@@ -378,7 +381,13 @@ export async function initPresenter() {
     typeof config.timerMinutes === "number" && config.timerMinutes > 0
       ? config.timerMinutes * 60 * 1000
       : null;
-  const timer = createTimer({ timerEl, resetBtnEl: timerResetBtn, countdownMs });
+  const timer = createTimer({
+    timerEl,
+    resetBtnEl: timerResetBtn,
+    countdownMs,
+    slideTimerEl: document.getElementById("slide-timer-value"),
+    slideResetBtnEl: document.getElementById("slide-timer-reset"),
+  });
 
   // ---- Grid view ----
   const gridView = createGridView({

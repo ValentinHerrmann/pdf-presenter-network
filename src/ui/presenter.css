@@ -567,6 +567,29 @@ button.timer:focus-visible {
   background: #161a20;
 }
 
+.slide-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #9aa3b0;
+}
+
+.slide-timer-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7380;
+}
+
+.slide-timer .paused {
+  color: #6b7380;
+}
+
 .timer-action {
   appearance: none;
   margin-left: auto;
