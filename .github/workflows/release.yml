@@ -1,7 +1,7 @@
 name: Release
 
 # Builds a self-contained tarball (bundle + UI + production node_modules) and
-# attaches it, together with the installer and uninstaller, to a GitHub release.
+# attaches it, together with the install, update and uninstall scripts, to a GitHub release.
 #
 # - Pushing a package.json version bump to main creates tag vX.Y.Z and its release.
 # - Running the workflow manually (re)builds the release for the current version.
@@ -65,14 +65,14 @@ jobs:
           mkdir -p "$stage/scripts"
           cp -r dist package.json pnpm-lock.yaml LICENSE README.md "$stage/"
           mkdir -p "$stage/src" && cp -r src/ui "$stage/src/ui"
-          cp scripts/install-linux.sh scripts/launch-linux.sh scripts/uninstall.sh "$stage/scripts/"
+          cp scripts/install-linux.sh scripts/launch-linux.sh scripts/uninstall.sh scripts/update.sh "$stage/scripts/"
           # Flat, production-only node_modules; all runtime deps are pure JS.
           (cd "$stage" && pnpm install --prod --frozen-lockfile --config.node-linker=hoisted --ignore-scripts)
           # Native optional canvas (pdf.js Node rendering) is never used here.
           rm -rf "$stage/node_modules/@napi-rs"
           node "$stage/dist/pdf-presenter.js" --version
           tar -czf pdf-presenter-network.tar.gz "$stage"
-          cp scripts/install.sh scripts/uninstall.sh .
+          cp scripts/install.sh scripts/uninstall.sh scripts/update.sh .
 
       - name: Create or update release
         if: steps.version.outputs.release == 'true'
@@ -87,4 +87,4 @@ jobs:
             git push origin "$TAG"
             gh release create "$TAG" --title "$TAG" --generate-notes
           fi
-          gh release upload "$TAG" pdf-presenter-network.tar.gz install.sh uninstall.sh --clobber
+          gh release upload "$TAG" pdf-presenter-network.tar.gz install.sh uninstall.sh update.sh --clobber

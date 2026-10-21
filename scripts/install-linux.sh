@@ -2,7 +2,6 @@
 set -eu
 
 project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-pdf_dir=$(CDPATH= cd -- "${1:-$HOME}" && pwd)
 host_name="${PDF_PRESENTER_HOST:-$(hostname -s)}"
 node_bin=$(command -v node || true)
 user_name=$(id -un)
@@ -11,6 +10,11 @@ service_file="/etc/systemd/system/$service_name"
 launcher_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 bin_dir="$HOME/.local/bin"
+
+# Default to the directory of an existing installation so updates keep it.
+default_dir=$(sed -n 's/^WorkingDirectory=//p' "$service_file" 2>/dev/null || true)
+[ -n "$default_dir" ] && [ -d "$default_dir" ] || default_dir="$HOME"
+pdf_dir=$(CDPATH= cd -- "${1:-$default_dir}" && pwd)
 
 if [ -z "$node_bin" ]; then
   printf '%s\n' "Node.js was not found in PATH." >&2
@@ -31,6 +35,10 @@ fi
 
 mkdir -p "$launcher_dir" "$desktop_dir" "$bin_dir"
 ln -sf "$project_root/dist/pdf-presenter.js" "$bin_dir/pdf-presenter"
+# Release installs only; a git checkout is updated with git.
+if [ ! -d "$project_root/.git" ]; then
+  ln -sf "$project_root/scripts/update.sh" "$bin_dir/pdf-presenter-update"
+fi
 cp "$project_root/scripts/launch-linux.sh" "$launcher_dir/launch.sh"
 chmod 755 "$launcher_dir/launch.sh"
 
@@ -76,5 +84,6 @@ printf '  Audience: http://%s/\n' "$host_name"
 printf '  Files:    http://%s/list\n' "$host_name"
 printf '  App:      PDF Presenter Network (application menu)\n'
 printf '  CLI:      %s/pdf-presenter\n' "$bin_dir"
+printf '  Update:   %s/pdf-presenter-update\n' "$bin_dir"
 printf '\nThe service starts with %s as its initial listing directory.\n' "$pdf_dir"
 printf '%s\n' 'Use Open PDF in the browser to select a PDF from anywhere.'

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Remove PDF Presenter Network: systemd service, app-menu entry, CLI link,
+# Remove PDF Presenter Network: systemd service, app-menu entry, CLI links,
 # and ~/.local/share/pdf-presenter-network (release files and browser profile).
 #
 #   curl -fsSL https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest/download/uninstall.sh | sh
@@ -9,7 +9,7 @@ service_name="pdf-presenter-network.service"
 service_file="/etc/systemd/system/$service_name"
 data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_file="${XDG_DATA_HOME:-$HOME/.local/share}/applications/pdf-presenter-network.desktop"
-cli_link="$HOME/.local/bin/pdf-presenter"
+bin_dir="$HOME/.local/bin"
 
 if [ "$(id -u)" -eq 0 ]; then
   printf '%s\n' "Run this uninstaller as the desktop user, not as root." >&2
@@ -25,12 +25,14 @@ fi
 
 rm -f "$desktop_file"
 
-# Only remove the CLI link when it is ours (e.g. not an npm global install).
-if [ -L "$cli_link" ]; then
-  case "$(readlink "$cli_link")" in
-    */pdf-presenter-network/*) rm -f "$cli_link" ;;
-  esac
-fi
+# Only remove links that are ours (e.g. not an npm global install).
+for link in "$bin_dir/pdf-presenter" "$bin_dir/pdf-presenter-update"; do
+  if [ -L "$link" ]; then
+    case "$(readlink "$link")" in
+      */pdf-presenter-network/*) rm -f "$link" ;;
+    esac
+  fi
+done
 
 rm -rf "$data_dir"
 

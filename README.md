@@ -33,13 +33,13 @@ Requires Linux with systemd, Node.js ≥ 18, and Chrome or Chromium for the app 
 curl -fsSL https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest/download/install.sh | sh
 ```
 
-This downloads the latest release to `~/.local/share/pdf-presenter-network/app`, installs the service and the **PDF Presenter Network** app-menu entry, and links the CLI to `~/.local/bin/pdf-presenter`. `sudo` is asked for once, to install the service.
+This downloads the latest release to `~/.local/share/pdf-presenter-network/app`, installs the service and the **PDF Presenter Network** app-menu entry, and links the CLI to `~/.local/bin/pdf-presenter` and the updater to `~/.local/bin/pdf-presenter-update`. `sudo` is asked for once, to install the service.
 
-- **Initial directory** for `/list` (default: your home directory): `curl -fsSL …/install.sh | sh -s -- /path/to/pdfs`
+- **Initial directory** for `/list` (default: your home directory, or the current one when reinstalling): `curl -fsSL …/install.sh | sh -s -- /path/to/pdfs`
 - **Specific version:** `curl -fsSL …/install.sh | PDF_PRESENTER_VERSION=v1.2.3 sh`
 - **Hostname** shown in URLs (default: short hostname): `PDF_PRESENTER_HOST=vh`
-- **Upgrade:** run the same command again.
-- **Uninstall:** removes the service, app-menu entry, CLI link, and `~/.local/share/pdf-presenter-network`.
+- **Update:** `pdf-presenter-update` installs the latest release if it is newer and keeps your directory; `pdf-presenter-update --check` only reports. Re-running the install command works too.
+- **Uninstall:** removes the service, app-menu entry, CLI links, and `~/.local/share/pdf-presenter-network`.
 
   ```bash
   curl -fsSL https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest/download/uninstall.sh | sh
@@ -72,7 +72,7 @@ sh scripts/install-linux.sh [/path/to/pdfs]   # builds, then installs like the r
 
 ### Releasing
 
-Bump `version` in `package.json` and push to `main`. The [Release workflow](.github/workflows/release.yml) tags `vX.Y.Z`, builds `pdf-presenter-network.tar.gz` (bundle, UI, and production `node_modules`), and attaches it with `install.sh` and `uninstall.sh` to the GitHub release. Run the workflow manually from the Actions tab to rebuild the assets of the current version.
+Bump `version` in `package.json` and push to `main`. The [Release workflow](.github/workflows/release.yml) tags `vX.Y.Z`, builds `pdf-presenter-network.tar.gz` (bundle, UI, and production `node_modules`), and attaches it with `install.sh`, `update.sh`, and `uninstall.sh` to the GitHub release. Run the workflow manually from the Actions tab to rebuild the assets of the current version.
 
 ## Quick start
 
