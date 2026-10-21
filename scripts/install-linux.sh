@@ -10,6 +10,7 @@ service_name="pdf-presenter-network.service"
 service_file="/etc/systemd/system/$service_name"
 launcher_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+bin_dir="$HOME/.local/bin"
 
 if [ -z "$node_bin" ]; then
   printf '%s\n' "Node.js was not found in PATH." >&2
@@ -21,11 +22,15 @@ if [ "$(id -u)" -eq 0 ]; then
   exit 1
 fi
 
-printf '%s\n' "Building PDF Presenter Network..."
 cd "$project_root"
-npx --yes pnpm@9 build
+# A git checkout is built here; a release tarball ships a prebuilt dist/.
+if [ -d "$project_root/.git" ] || [ ! -f "$project_root/dist/pdf-presenter.js" ]; then
+  printf '%s\n' "Building PDF Presenter Network..."
+  npx --yes pnpm@9 build
+fi
 
-mkdir -p "$launcher_dir" "$desktop_dir"
+mkdir -p "$launcher_dir" "$desktop_dir" "$bin_dir"
+ln -sf "$project_root/dist/pdf-presenter.js" "$bin_dir/pdf-presenter"
 cp "$project_root/scripts/launch-linux.sh" "$launcher_dir/launch.sh"
 chmod 755 "$launcher_dir/launch.sh"
 
@@ -63,11 +68,13 @@ StartupWMClass=PDF Presenter Network
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now "$service_name"
+sudo systemctl enable "$service_name"
+sudo systemctl restart "$service_name"
 
 printf '\nInstalled PDF Presenter Network.\n'
 printf '  Audience: http://%s/\n' "$host_name"
 printf '  Files:    http://%s/list\n' "$host_name"
 printf '  App:      PDF Presenter Network (application menu)\n'
+printf '  CLI:      %s/pdf-presenter\n' "$bin_dir"
 printf '\nThe service starts with %s as its initial listing directory.\n' "$pdf_dir"
 printf '%s\n' 'Use Open PDF in the browser to select a PDF from anywhere.'

@@ -1,44 +1,90 @@
-# pdf-presenter
+# PDF Presenter Network
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pdf-presenter"><img alt="npm version" src="https://img.shields.io/npm/v/pdf-presenter?color=cb3837&logo=npm&logoColor=white&label=npm"></a>
-  <a href="https://www.npmjs.com/package/pdf-presenter"><img alt="npm downloads" src="https://img.shields.io/npm/dm/pdf-presenter?color=cb3837&logo=npm&logoColor=white"></a>
-  <a href="https://github.com/htlin222/pdf-presenter/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/pdf-presenter?color=blue"></a>
-  <a href="https://nodejs.org"><img alt="node" src="https://img.shields.io/node/v/pdf-presenter?color=5fa04e&logo=node.js&logoColor=white"></a>
+  <a href="https://github.com/ValentinHerrmann/pdf-presenter-network/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ValentinHerrmann/pdf-presenter-network/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest"><img alt="release" src="https://img.shields.io/github/v/release/ValentinHerrmann/pdf-presenter-network?color=6f42c1&logo=github&logoColor=white"></a>
+  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/github/license/ValentinHerrmann/pdf-presenter-network?color=blue"></a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/htlin222/pdf-presenter/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/htlin222/pdf-presenter/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/htlin222/pdf-presenter/actions/workflows/publish.yml"><img alt="Publish" src="https://github.com/htlin222/pdf-presenter/actions/workflows/publish.yml/badge.svg"></a>
-  <a href="https://github.com/htlin222/pdf-presenter/releases"><img alt="release" src="https://img.shields.io/github/v/release/htlin222/pdf-presenter?color=6f42c1&logo=github&logoColor=white"></a>
-  <a href="https://www.npmjs.com/package/pdf-presenter"><img alt="provenance" src="https://img.shields.io/badge/npm-provenance%20verified-2ea44f?logo=npm&logoColor=white"></a>
-</p>
-
-<p align="center">
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript&logoColor=white">
-  <img alt="pnpm" src="https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm&logoColor=white">
-  <img alt="tsup" src="https://img.shields.io/badge/bundler-tsup-ff4f64">
-  <img alt="pdf.js" src="https://img.shields.io/badge/pdf.js-4.x-e31e24">
-  <a href="https://github.com/htlin222/pdf-presenter/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/htlin222/pdf-presenter?style=social"></a>
-</p>
-
-> Lightweight CLI that serves a PDF as browser slides with a full presenter mode — speaker notes, next-slide preview, pause-able timer, audio recording with per-slide timeline metadata, and resizable panes. No markdown conversion, no native dependencies. Point it at a PDF and go.
+> Serve PDF slides in the browser with a full presenter mode, and let audience devices and projectors on the local network follow along — speaker notes, next-slide preview, timers, annotations, and a laser pointer. Point it at a PDF and go.
 
 <p align="center">
   <img src="assets/presenter-preview.png" alt="Presenter view — current slide, speaker notes, next slide preview, and timer" width="720" />
 </p>
 
-[繁體中文版 →](./README-zhtw.md)
+## About this fork
+
+This is a fork of [htlin222/pdf-presenter](https://github.com/htlin222/pdf-presenter), adapted for presenting from one laptop to a room — classroom projectors, smart boards, or students' devices on the same LAN. Differences from upstream:
+
+- **Network sync.** Presenter and audiences sync through a WebSocket on the server instead of only between windows of one browser, so any device on the LAN can open the audience view. Sync also works on restricted networks.
+- **Always-on directory server.** Without a file argument the root URL is an audience view with a waiting screen; the presenter picks a PDF from `/list` or uploads one from anywhere with **Open PDF**.
+- **Annotations.** Pen (with colours), eraser, and laser pointer, replicated live to every audience.
+- **Zoom and pan** of the current slide, synced to audiences, plus clickable links inside the PDF.
+- **Timed slides.** Beamer `\transduration{seconds}` pages advance automatically.
+- **Per-slide timer** next to the overall timer in the presenter view.
+- **Linux desktop app.** A systemd service on port 80 (`http://<hostname>/`) and a Chrome/Chromium app launcher.
+- **Distributed via GitHub releases**, not npm. `npx pdf-presenter` installs the upstream package without these changes.
+
+## Install
+
+Requires Linux with systemd, Node.js ≥ 18, and Chrome or Chromium for the app window.
 
 ```bash
-npx pdf-presenter slides.pdf           # serve & open browser
-npx pdf-presenter -gn slides.pdf       # generate a notes template
-npx pdf-presenter slides.pdf -t 20     # 20-minute countdown
-npx pdf-presenter ./slides/            # browse a directory of PDFs
-npx pdf-presenter                      # open the audience view for the current directory
+curl -fsSL https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest/download/install.sh | sh
 ```
 
----
+This downloads the latest release to `~/.local/share/pdf-presenter-network/app`, installs the service and the **PDF Presenter Network** app-menu entry, and links the CLI to `~/.local/bin/pdf-presenter`. `sudo` is asked for once, to install the service.
+
+- **Initial directory** for `/list` (default: your home directory): `curl -fsSL …/install.sh | sh -s -- /path/to/pdfs`
+- **Specific version:** `curl -fsSL …/install.sh | PDF_PRESENTER_VERSION=v1.2.3 sh`
+- **Hostname** shown in URLs (default: short hostname): `PDF_PRESENTER_HOST=vh`
+- **Upgrade:** run the same command again.
+- **Uninstall:**
+
+  ```bash
+  sudo systemctl disable --now pdf-presenter-network.service
+  sudo rm /etc/systemd/system/pdf-presenter-network.service
+  rm -rf ~/.local/share/pdf-presenter-network ~/.local/share/applications/pdf-presenter-network.desktop ~/.local/bin/pdf-presenter
+  ```
+
+### Without the service
+
+Download `pdf-presenter-network.tar.gz` from the [latest release](https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest), unpack it, and run the CLI directly:
+
+```bash
+tar -xzf pdf-presenter-network.tar.gz
+node pdf-presenter-network/dist/pdf-presenter.js slides.pdf
+```
+
+### From source
+
+```bash
+git clone https://github.com/ValentinHerrmann/pdf-presenter-network.git
+cd pdf-presenter-network
+pnpm install
+sh scripts/install-linux.sh [/path/to/pdfs]   # builds, then installs like the release installer
+```
+
+### What the installer sets up
+
+- The server runs as your user on HTTP port 80, so the audience view is at `http://<hostname>/` and the file browser at `http://<hostname>/list`. The service only receives the `CAP_NET_BIND_SERVICE` capability.
+- **PDF Presenter Network** in the application menu opens `/list` in a separate Chrome/Chromium app window with an isolated browser profile.
+- The directory is only the starting point for `/list`. **Open PDF** uploads a PDF from any location on the computer.
+- The listing page has a web app manifest, so Chrome or Chromium can also install it from the browser's install icon.
+
+### Releasing
+
+Bump `version` in `package.json` and push to `main`. The [Release workflow](.github/workflows/release.yml) tags `vX.Y.Z`, builds `pdf-presenter-network.tar.gz` (bundle, UI, and production `node_modules`), and attaches it with `install.sh` to the GitHub release. Run the workflow manually from the Actions tab to rebuild the assets of the current version.
+
+## Quick start
+
+```bash
+pdf-presenter slides.pdf           # serve & open browser
+pdf-presenter -gn slides.pdf       # generate a notes template
+pdf-presenter slides.pdf -t 20     # 20-minute countdown
+pdf-presenter ./slides/            # browse a directory of PDFs
+pdf-presenter                      # open the audience view for the current directory
+```
 
 ## Why
 
@@ -58,64 +104,10 @@ Presenting a PDF deck usually means either:
 - **Keyboard-first.** Arrow keys, `Space`, `PageUp/Down`, `Home/End`, plus `F` freeze, `B` black, `R` reset timer.
 - **LAN synchronization** via WebSockets — the presenter window drives audience windows on the same computer or other devices on the local network.
 - **Annotations.** Draw persistent per-slide pen strokes, erase complete strokes, or show a hover laser pointer. Annotations scale with the rendered slide and are replicated live to every audience.
-- **Timed slides.** Beamer PDFs using `\\transduration{seconds}` automatically advance from the presenter. The resulting slide changes are synchronized to every audience.
+- **Timed slides.** Beamer PDFs using `\transduration{seconds}` automatically advance from the presenter. The resulting slide changes are synchronized to every audience.
 - **No native deps.** Pure JavaScript. `pdf.js` does the heavy lifting.
 
-## Install
-
-Run without installing:
-
-```bash
-npx pdf-presenter slides.pdf
-```
-
-Or install globally:
-
-```bash
-npm i -g pdf-presenter
-pdf-presenter slides.pdf
-```
-
-Requires Node.js ≥ 18.
-
-### Install the Linux desktop app
-
-On Linux, install the desktop launcher and a systemd service for a directory of
-PDFs:
-
-```bash
-sh scripts/install-linux.sh
-```
-
-An optional directory argument can be supplied when you want a specific
-collection to appear in the initial listing:
-
-```bash
-sh scripts/install-linux.sh /path/to/your/pdf-directory
-```
-
-The installer:
-
-- serves the initial directory on HTTP port 80, so the audience view is at
-  `http://<hostname>/` and the file browser is at `http://<hostname>/list`;
-- installs **PDF Presenter Network** in the application menu;
-- opens `/list` in a separate Chrome/Chromium app window using an isolated
-  browser profile;
-- starts the server automatically through systemd.
-
-Binding port 80 requires administrator permission during installation. The
-service itself runs as the installing user and only receives the
-`CAP_NET_BIND_SERVICE` capability. The hostname defaults to the computer's
-short hostname; set `PDF_PRESENTER_HOST=vh` when installing if needed.
-
-The directory is only the starting point for `/list`. The **Open PDF** button
-uses the browser's file picker and can upload a PDF from any location on the
-computer; it does not need to be inside that directory.
-
-The listing page includes a web app manifest, so Chrome or Chromium can also
-install it directly from the browser's install icon.
-
-### Present to another device on your LAN
+## Present to another device on your LAN
 
 The server listens on all network interfaces. Start the presentation on the host computer, then open the audience URL from another device using the host's LAN address:
 
@@ -127,7 +119,7 @@ Use the printed `localhost` URL for the presenter window on the host. The audien
 
 The presenter toolbar provides **Pen**, **Eraser**, and **Laser** tools. Pen strokes are stored in memory per slide for the current session; switching slides clears the visible overlay and restores that slide's strokes when revisited.
 
-For Beamer decks, a page containing `\\transduration{5}` advances after five seconds. Pages without a positive duration remain manual, and freeze/blackout pauses automatic advancement.
+For Beamer decks, a page containing `\transduration{5}` advances after five seconds. Pages without a positive duration remain manual, and freeze/blackout pauses automatic advancement.
 
 ## Usage
 

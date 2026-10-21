@@ -1,44 +1,90 @@
-name: Auto-release on version bump
+name: Release
+
+# Builds a self-contained tarball (bundle + UI + production node_modules) and
+# attaches it, together with the installer, to a GitHub release.
+#
+# - Pushing a package.json version bump to main creates tag vX.Y.Z and its release.
+# - Running the workflow manually (re)builds the release for the current version.
 
 on:
   push:
     branches: [main]
     paths:
       - package.json
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    name: Create release if version changed
+    name: Build and release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Check for version bump
+      - name: Determine version
         id: version
         run: |
           NEW=$(node -p "require('./package.json').version")
           OLD=$(git show HEAD~1:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null || echo "")
-          echo "old=$OLD" >> "$GITHUB_OUTPUT"
-          echo "new=$NEW" >> "$GITHUB_OUTPUT"
-          if [ "$NEW" != "$OLD" ] && [ -n "$OLD" ]; then
-            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || { [ -n "$OLD" ] && [ "$NEW" != "$OLD" ]; }; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
           else
-            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "release=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create tag and release
-        if: steps.version.outputs.bumped == 'true'
+      - name: Install pnpm
+        if: steps.version.outputs.release == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        if: steps.version.outputs.release == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Type-check, test and build
+        if: steps.version.outputs.release == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
+          pnpm test
+          pnpm build
+
+      - name: Assemble tarball
+        if: steps.version.outputs.release == 'true'
+        run: |
+          stage=pdf-presenter-network
+          mkdir -p "$stage/scripts"
+          cp -r dist package.json pnpm-lock.yaml LICENSE README.md "$stage/"
+          mkdir -p "$stage/src" && cp -r src/ui "$stage/src/ui"
+          cp scripts/install-linux.sh scripts/launch-linux.sh "$stage/scripts/"
+          # Flat, production-only node_modules; all runtime deps are pure JS.
+          (cd "$stage" && pnpm install --prod --frozen-lockfile --config.node-linker=hoisted --ignore-scripts)
+          # Native optional canvas (pdf.js Node rendering) is never used here.
+          rm -rf "$stage/node_modules/@napi-rs"
+          node "$stage/dist/pdf-presenter.js" --version
+          tar -czf pdf-presenter-network.tar.gz "$stage"
+          cp scripts/install.sh install.sh
+
+      - name: Create or update release
+        if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          VERSION="v${{ steps.version.outputs.new }}"
-          git tag -a "$VERSION" -m "$VERSION"
-          git push origin "$VERSION"
-          gh release create "$VERSION" --title "$VERSION" --generate-notes
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "$TAG"
+            git push origin "$TAG"
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" pdf-presenter-network.tar.gz install.sh --clobber
