@@ -11,10 +11,37 @@ launcher_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 bin_dir="$HOME/.local/bin"
 
-# Default to the directory of an existing installation so updates keep it.
-default_dir=$(sed -n 's/^WorkingDirectory=//p' "$service_file" 2>/dev/null || true)
-[ -n "$default_dir" ] && [ -d "$default_dir" ] || default_dir="$HOME"
-pdf_dir=$(CDPATH= cd -- "${1:-$default_dir}" && pwd)
+# The PDF directory comes from the first argument, otherwise ask on the
+# terminal (stdin may be a curl pipe). An existing installation's directory
+# is offered as the default, so updates keep it with Enter.
+pdf_dir="${1:-}"
+if [ -z "$pdf_dir" ]; then
+  current_dir=$(sed -n 's/^WorkingDirectory=//p' "$service_file" 2>/dev/null || true)
+  [ -n "$current_dir" ] && [ -d "$current_dir" ] || current_dir=""
+  if ! (true </dev/tty) 2>/dev/null; then
+    printf '%s\n' "No terminal to ask for the PDF directory; pass it as an argument." >&2
+    exit 1
+  fi
+  while [ -z "$pdf_dir" ]; do
+    if [ -n "$current_dir" ]; then
+      printf 'PDF directory for the file list [%s]: ' "$current_dir" >/dev/tty
+    else
+      printf 'PDF directory for the file list: ' >/dev/tty
+    fi
+    IFS= read -r answer </dev/tty || exit 1
+    answer="${answer:-$current_dir}"
+    case "$answer" in
+      "~") answer="$HOME" ;;
+      "~/"*) answer="$HOME/${answer#"~/"}" ;;
+    esac
+    if [ -n "$answer" ] && [ -d "$answer" ]; then
+      pdf_dir="$answer"
+    elif [ -n "$answer" ]; then
+      printf 'Not a directory: %s\n' "$answer" >/dev/tty
+    fi
+  done
+fi
+pdf_dir=$(CDPATH= cd -- "$pdf_dir" && pwd)
 
 if [ -z "$node_bin" ]; then
   printf '%s\n' "Node.js was not found in PATH." >&2
