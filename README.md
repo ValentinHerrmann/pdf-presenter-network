@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/audience-preview.png" alt="Audience view — open http://<<presenter-device>>:80 in any brwoser and set to fullscreen" width="720" />
+  <img src="assets/audience-view.png" alt="Audience view — open http://<<presenter-device>>:80 in any brwoser and set to fullscreen" width="720" />
 </p>
 
 ## About this fork
