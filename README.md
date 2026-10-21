@@ -12,6 +12,10 @@
   <img src="assets/presenter-preview.png" alt="Presenter view — current slide, speaker notes, next slide preview, and timer" width="720" />
 </p>
 
+<p align="center">
+  <img src="assets/audience-preview.png" alt="Audience view — open http://<<presenter-device>>:80 in any brwoser and set to fullscreen" width="720" />
+</p>
+
 ## About this fork
 
 This is a fork of [htlin222/pdf-presenter](https://github.com/htlin222/pdf-presenter), adapted for presenting from one laptop to a room — classroom projectors, smart boards, or students' devices on the same LAN. Differences from upstream:
