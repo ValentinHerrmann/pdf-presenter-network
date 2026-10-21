@@ -80,11 +80,39 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
+          base="https://github.com/${{ github.repository }}/releases"
+          cat > release-notes.md <<EOF
+          ## Install
+
+          \`\`\`bash
+          curl -fsSL $base/latest/download/install.sh | sh
+          \`\`\`
+
+          This version specifically:
+
+          \`\`\`bash
+          curl -fsSL $base/download/$TAG/install.sh | PDF_PRESENTER_VERSION=$TAG sh
+          \`\`\`
+
+          ## Update
+
+          \`\`\`bash
+          pdf-presenter-update
+          \`\`\`
+
+          ## Uninstall
+
+          \`\`\`bash
+          curl -fsSL $base/latest/download/uninstall.sh | sh
+          \`\`\`
+
+          EOF
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "$TAG"
             git push origin "$TAG"
-            gh release create "$TAG" --title "$TAG" --generate-notes
+            # GitHub appends the generated changelog to these notes.
+            gh release create "$TAG" --title "$TAG" --notes-file release-notes.md --generate-notes
           fi
           gh release upload "$TAG" pdf-presenter-network.tar.gz install.sh uninstall.sh update.sh --clobber
