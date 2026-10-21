@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { deflateSync } from "node:zlib";
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it } from "vitest";
 import { attachSyncServer } from "../src/server/sync.js";
@@ -136,14 +137,53 @@ describe("HTTP long-poll sync fallback", () => {
   });
 });
 
+function fakePdf(source: string | Uint8Array, pageObjects: number[]) {
+  const data = typeof source === "string" ? new TextEncoder().encode(source) : source;
+  return {
+    getData: async () => data,
+    numPages: pageObjects.length,
+    getPage: async (n: number) => ({ ref: { num: pageObjects[n - 1], gen: 0 } }),
+  };
+}
+
 describe("Beamer transition durations", () => {
   it("reads positive /Dur values in page order and treats other pages as manual", async () => {
-    const pdf = new TextEncoder().encode(
+    const pdf = fakePdf(
       "1 0 obj << /Type /Page /Dur 5 >> endobj " +
         "2 0 obj << /Type /Page >> endobj " +
         "3 0 obj << /Type /Page /Dur 0 >> endobj " +
         "4 0 obj << /Type /Pages >> endobj",
+      [1, 2, 3],
     );
-    await expect(readSlideDurations({ getData: async () => pdf })).resolves.toEqual([5, null, null]);
+    await expect(readSlideDurations(pdf)).resolves.toEqual([5, null, null]);
+  });
+
+  it("maps durations by page reference, not object order", async () => {
+    const pdf = fakePdf(
+      "7 0 obj << /Type /Page /Dur 2 >> endobj " + "8 0 obj << /Type /Page >> endobj",
+      [8, 7],
+    );
+    await expect(readSlideDurations(pdf)).resolves.toEqual([null, 2]);
+  });
+
+  it("reads page dicts packed in compressed object streams", async () => {
+    const objects = ["<< /Type /Page /Dur 3 >>", "<< /Type /Page >>", "<< /Type /Pages >>"];
+    let offset = 0;
+    const pairs = objects.map((object, i) => {
+      const pair = `${10 + i} ${offset}`;
+      offset += object.length + 1;
+      return pair;
+    });
+    const header = pairs.join(" ") + " ";
+    const compressed = deflateSync(Buffer.from(header + objects.join(" "), "latin1"));
+    const pdf = Buffer.concat([
+      Buffer.from(
+        `5 0 obj << /Type /ObjStm /N 3 /First ${header.length} /Filter /FlateDecode /Length ${compressed.length} >>\nstream\n`,
+        "latin1",
+      ),
+      compressed,
+      Buffer.from("\nendstream\nendobj ", "latin1"),
+    ]);
+    await expect(readSlideDurations(fakePdf(pdf, [11, 10]))).resolves.toEqual([null, 3]);
   });
 });
