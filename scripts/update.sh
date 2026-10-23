@@ -4,6 +4,9 @@
 #
 #   pdf-presenter-update            # installed via install.sh
 #   pdf-presenter-update --check    # only report whether an update is available
+#
+# The presenter's Update button runs this with PDF_PRESENTER_APP_ONLY=1, which
+# refreshes the app without touching the service (see install-linux.sh).
 set -eu
 
 repo="ValentinHerrmann/pdf-presenter-network"

@@ -1019,6 +1019,11 @@ button.timer:focus-visible {
   display: none;
 }
 
+/* Full row, so it stands out when an update is available. */
+.meta-actions #update-btn {
+  grid-column: 1 / -1;
+}
+
 .button-icon {
   color: #d7dbe3;
   font-size: 20px;

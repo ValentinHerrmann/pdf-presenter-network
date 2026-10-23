@@ -21,6 +21,7 @@ import { createOverlay } from "./modules/overlay.js";
 import { createLinkLayer } from "./modules/link-layer.js";
 import { readSlideDurations } from "./modules/slide-duration.js";
 import { createSlideViewport } from "./modules/slide-viewport.js";
+import { createUpdateButton } from "./modules/update-check.js";
 
 export async function initPresenter() {
   const config = readConfig();
@@ -51,6 +52,10 @@ export async function initPresenter() {
     pdfNameEl.textContent = config.pdfName;
     pdfNameEl.title = config.pdfName;
   }
+
+  createUpdateButton(document.getElementById("update-btn"), {
+    reloadUrl: config.listUrl ?? window.location.href,
+  });
 
   // Show "back to list" button when launched from directory mode
   if (config.listUrl) {

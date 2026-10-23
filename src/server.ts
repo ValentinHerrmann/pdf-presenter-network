@@ -17,6 +17,7 @@ import { handleStaticRoutes } from "./server/routes/static.js";
 import { handleListingRoutes } from "./server/routes/listing.js";
 import { handlePdfProxyRoutes } from "./server/routes/pdf-proxy.js";
 import { handleUploadRoutes } from "./server/routes/upload.js";
+import { handleUpdateRoutes } from "./server/routes/update.js";
 import { handleSharedAssetRoutes } from "./server/routes/static.js";
 import { attachSyncServer } from "./server/sync.js";
 import { getPdfNotesStatus, listPdfsInDirectory, type PdfNotesStatus } from "./utils.js";
@@ -40,6 +41,7 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
     const url = new URL(req.url ?? "/", `http://localhost:${config.port}`);
     try {
       if ((await sync.handleHttp(req, res, url)) === "handled") return;
+      if ((await handleUpdateRoutes(req, res, url, { uiDir })) === "handled") return;
 
       // Ordering: recording (most specific prefixes) → notes → static catch-all.
       if (
@@ -186,6 +188,7 @@ export async function startDirectoryServer(
     const url = new URL(req.url ?? "/", `http://localhost:${config.port}`);
     try {
       if ((await sync.handleHttp(req, res, url)) === "handled") return;
+      if ((await handleUpdateRoutes(req, res, url, { uiDir })) === "handled") return;
 
       if (
         (await handleUploadRoutes(req, res, url, { savePdf })) === "handled"

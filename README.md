@@ -43,6 +43,7 @@ This downloads the latest release to `~/.local/share/pdf-presenter-network/app`,
 - **Specific version:** `curl -fsSL …/install.sh | PDF_PRESENTER_VERSION=v1.2.3 sh`
 - **Hostname** shown in URLs (default: short hostname): `PDF_PRESENTER_HOST=vh`
 - **Update:** `pdf-presenter-update` installs the latest release if it is newer and asks for the directory again (Enter keeps the current one); `pdf-presenter-update --check` only reports. Re-running the install command works too.
+- **Update from the presenter:** when a newer release exists, the presenter view on the presenter PC shows an **Update to vX.Y.Z** button. It installs the release without `sudo`, keeps the service settings, restarts the server and reloads the page. Other devices never see it. Service changes in a new release still need `pdf-presenter-update`.
 - **Uninstall:** removes the service, app-menu entry, CLI links, and `~/.local/share/pdf-presenter-network`.
 
   ```bash

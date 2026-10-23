@@ -11,11 +11,16 @@ launcher_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 bin_dir="$HOME/.local/bin"
 
+# PDF_PRESENTER_APP_ONLY=1 (set by the in-app update) refreshes the app files
+# and launcher but leaves the service alone: no sudo, no directory question.
+# The running server exits afterwards and systemd restarts it.
+app_only="${PDF_PRESENTER_APP_ONLY:-}"
+
 # The PDF directory comes from the first argument, otherwise ask on the
 # terminal (stdin may be a curl pipe). An existing installation's directory
 # is offered as the default, so updates keep it with Enter.
 pdf_dir="${1:-}"
-if [ -z "$pdf_dir" ]; then
+if [ -z "$pdf_dir" ] && [ -z "$app_only" ]; then
   current_dir=$(sed -n 's/^WorkingDirectory=//p' "$service_file" 2>/dev/null || true)
   [ -n "$current_dir" ] && [ -d "$current_dir" ] || current_dir=""
   if ! (true </dev/tty) 2>/dev/null; then
@@ -41,7 +46,7 @@ if [ -z "$pdf_dir" ]; then
     fi
   done
 fi
-pdf_dir=$(CDPATH= cd -- "$pdf_dir" && pwd)
+[ -n "$app_only" ] || pdf_dir=$(CDPATH= cd -- "$pdf_dir" && pwd)
 
 if [ -z "$node_bin" ]; then
   printf '%s\n' "Node.js was not found in PATH." >&2
@@ -68,6 +73,11 @@ if [ ! -d "$project_root/.git" ]; then
 fi
 cp "$project_root/scripts/launch-linux.sh" "$launcher_dir/launch.sh"
 chmod 755 "$launcher_dir/launch.sh"
+
+if [ -n "$app_only" ]; then
+  printf '%s\n' "Updated PDF Presenter Network app files; the service keeps its settings."
+  exit 0
+fi
 
 printf '%s\n' "Installing $service_name (requires administrator permission)..."
 sudo tee "$service_file" >/dev/null <<EOF
