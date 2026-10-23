@@ -353,10 +353,16 @@ export async function initPresenter() {
     }
     // Grid view owns the keyboard while open (arrows / Enter / Esc).
     if (gridView.isOpen()) return;
-    if (ev.key === "ArrowRight" || ev.key === "PageDown" || ev.key === " ") {
+    // Up/Down too: some clickers send those instead of Left/Right.
+    if (
+      ev.key === "ArrowRight" ||
+      ev.key === "ArrowDown" ||
+      ev.key === "PageDown" ||
+      ev.key === " "
+    ) {
       ev.preventDefault();
       show(currentSlide + 1);
-    } else if (ev.key === "ArrowLeft" || ev.key === "PageUp") {
+    } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp" || ev.key === "PageUp") {
       ev.preventDefault();
       show(currentSlide - 1);
     } else if (ev.key === "Home") {

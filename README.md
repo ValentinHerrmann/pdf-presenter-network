@@ -206,8 +206,8 @@ Both views:
 
 | Key | Action |
 |-----|--------|
-| `→` / `Space` / `PageDown` | Next slide |
-| `←` / `PageUp` | Previous slide |
+| `→` / `↓` / `Space` / `PageDown` | Next slide |
+| `←` / `↑` / `PageUp` | Previous slide |
 | `Home` / `End` | First / last slide (presenter) |
 
 Audience view only:
