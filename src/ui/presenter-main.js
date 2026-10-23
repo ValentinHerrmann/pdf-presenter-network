@@ -251,7 +251,13 @@ export async function initPresenter() {
   linkLayerEl?.classList.add("active");
 
   socket.onMessage((msg) => {
-    if (msg.type === "stroke" && msg.slide && msg.id) {
+    if (msg.type === "snapshot") {
+      strokesBySlide.clear();
+      for (const [slide, strokes] of Object.entries(msg.strokes ?? {})) {
+        strokesBySlide.set(Number(slide), strokes);
+      }
+      overlay.redraw();
+    } else if (msg.type === "stroke" && msg.slide && msg.id) {
       const strokes = strokesBySlide.get(msg.slide) ?? [];
       const index = strokes.findIndex((stroke) => stroke.id === msg.id);
       if (index >= 0) strokes[index] = msg;

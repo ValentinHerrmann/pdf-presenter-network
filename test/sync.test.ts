@@ -79,6 +79,47 @@ describe("WebSocket sync relay", () => {
     presenter.close();
     audience.close();
   });
+  it("restores strokes to a reconnecting presenter and clears them on reset", async () => {
+    const httpServer = createServer();
+    const sync = attachSyncServer(httpServer);
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("Server did not bind");
+    resources.push(async () => {
+      await sync.stop();
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    });
+
+    const first = await openSocket(address.port);
+    first.send(JSON.stringify({ type: "hello", role: "presenter" }));
+    await nextMessage(first);
+    const stroke = {
+      type: "stroke",
+      id: "stroke-1",
+      slide: 2,
+      points: [{ x: 0.1, y: 0.2 }],
+      color: "#2563eb",
+      width: 4,
+    };
+    first.send(JSON.stringify(stroke));
+    await nextMessage(first);
+    first.close();
+
+    const second = await openSocket(address.port);
+    second.send(JSON.stringify({ type: "hello", role: "presenter" }));
+    await expect(nextMessage(second)).resolves.toMatchObject({
+      type: "snapshot",
+      strokes: { "2": [expect.objectContaining({ id: "stroke-1" })] },
+    });
+
+    sync.reset();
+    await expect(nextMessage(second)).resolves.toMatchObject({
+      type: "snapshot",
+      slide: 1,
+      strokes: {},
+    });
+    second.close();
+  });
 });
 
 describe("HTTP long-poll sync fallback", () => {

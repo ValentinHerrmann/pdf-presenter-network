@@ -213,6 +213,7 @@ export async function startDirectoryServer(
           timerMinutes: config.timerMinutes,
           resolvePdfPath: (name) => uploadedPdfPaths.get(name),
           onPresenter: (name, audienceHtml, presenterHtml) => {
+            if (name !== currentPdfName) sync.reset();
             currentPdfName = name;
             currentAudienceHtml = audienceHtml;
             currentPresenterHtml = presenterHtml;

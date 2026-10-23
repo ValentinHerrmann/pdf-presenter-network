@@ -121,6 +121,7 @@ export async function initAudience() {
         if (msg.slide === currentSlide) overlay.redraw();
         break;
       case "snapshot":
+        strokesBySlide.clear();
         for (const [slide, strokes] of Object.entries(msg.strokes ?? {})) {
           strokesBySlide.set(Number(slide), strokes);
         }

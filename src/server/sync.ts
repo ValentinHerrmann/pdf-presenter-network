@@ -144,6 +144,8 @@ export interface SyncServer {
     res: ServerResponse,
     url: URL,
   ): Promise<"handled" | "skip">;
+  /** Drop all state (e.g. a different PDF was opened) and tell clients. */
+  reset(): void;
   stop(): Promise<void>;
 }
 
@@ -151,13 +153,14 @@ export function attachSyncServer(server: Server): SyncServer {
   const webSocketServer = new WebSocketServer({ server });
   const clients = new Set<WebSocket>();
   const roles = new Map<WebSocket, Role>();
-  const state: SyncState = {
+  const initialState = (): SyncState => ({
     slide: 1,
     frozen: false,
     black: false,
     viewport: { scale: 1, offsetX: 0, offsetY: 0 },
     strokes: {},
-  };
+  });
+  let state = initialState();
   const events: LoggedEvent[] = [];
   let seq = 0;
   const waiters = new Set<() => void>();
@@ -345,6 +348,10 @@ export function attachSyncServer(server: Server): SyncServer {
 
   return {
     handleHttp,
+    reset: () => {
+      state = initialState();
+      publish(snapshot(state));
+    },
     stop: () =>
       new Promise<void>((resolve) => {
         for (const wake of [...waiters]) wake();
