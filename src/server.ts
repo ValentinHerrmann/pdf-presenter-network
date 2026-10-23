@@ -17,7 +17,7 @@ import { handleStaticRoutes } from "./server/routes/static.js";
 import { handleListingRoutes } from "./server/routes/listing.js";
 import { handlePdfProxyRoutes } from "./server/routes/pdf-proxy.js";
 import { handleUploadRoutes } from "./server/routes/upload.js";
-import { handleUpdateRoutes } from "./server/routes/update.js";
+import { handleUpdateRoutes, refreshLatest } from "./server/routes/update.js";
 import { handleSharedAssetRoutes } from "./server/routes/static.js";
 import { attachSyncServer } from "./server/sync.js";
 import { getPdfNotesStatus, listPdfsInDirectory, type PdfNotesStatus } from "./utils.js";
@@ -97,6 +97,7 @@ export async function startServer(config: ServerConfig): Promise<StartedServer> 
       resolveP();
     });
   });
+  void refreshLatest();
 
   return {
     port: config.port,
@@ -259,6 +260,7 @@ export async function startDirectoryServer(
       resolveP();
     });
   });
+  void refreshLatest();
 
   return {
     port: config.port,

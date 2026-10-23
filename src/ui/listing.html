@@ -49,6 +49,10 @@
       .btn-primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
       .btn-primary:hover { background: #388bfd; }
       .btn:disabled { opacity: 0.6; cursor: wait; }
+      .header-actions { display: flex; gap: 8px; }
+      .btn-update { background: #238636; border-color: #2ea043; color: #fff; }
+      .btn-update:hover:not(:disabled) { background: #2ea043; }
+      .hidden { display: none; }
       .empty-state {
         text-align: center; padding: 64px 24px; color: #8b949e; font-size: 14px;
       }
@@ -59,7 +63,10 @@
     <div class="container">
       <div class="header">
         <h1>PDF Presenter</h1>
-        <button type="button" id="open-pdf" class="btn btn-primary">Open PDF</button>
+        <div class="header-actions">
+          <button type="button" id="update-btn" class="btn btn-update hidden">Update</button>
+          <button type="button" id="open-pdf" class="btn btn-primary">Open PDF</button>
+        </div>
         <input type="file" id="open-pdf-input" accept="application/pdf,.pdf" hidden />
       </div>
       <div class="subtitle" id="dir-path"></div>
@@ -67,7 +74,9 @@
     </div>
     <script type="module">
       import { initListing } from "/assets/listing.js";
+      import { createUpdateButton } from "/assets/modules/update-check.js";
       initListing();
+      createUpdateButton(document.getElementById("update-btn"));
     </script>
   </body>
 </html>

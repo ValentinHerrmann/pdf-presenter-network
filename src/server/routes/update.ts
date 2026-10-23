@@ -39,8 +39,11 @@ function newer(candidate: string, current: string): boolean {
   return false;
 }
 
-/** Latest release version from the `releases/latest` redirect, cached for an hour. */
-async function refreshLatest(): Promise<void> {
+/**
+ * Latest release version from the `releases/latest` redirect, cached for an
+ * hour. Called on server start and again by the pages' periodic checks.
+ */
+export async function refreshLatest(): Promise<void> {
   if (Date.now() - checkedAt < CHECK_INTERVAL_MS) return;
   checking ??= (async () => {
     try {
