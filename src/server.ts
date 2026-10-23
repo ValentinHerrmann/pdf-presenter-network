@@ -19,6 +19,8 @@ import { handlePdfProxyRoutes } from "./server/routes/pdf-proxy.js";
 import { handleUploadRoutes } from "./server/routes/upload.js";
 import { handleUpdateRoutes, refreshLatest } from "./server/routes/update.js";
 import { handleQuitRoutes } from "./server/routes/quit.js";
+import { handleLinkRoutes } from "./server/routes/links.js";
+import { listLinksInDirectory, readLinkUrl } from "./server/linked-pdfs.js";
 import { handleSharedAssetRoutes } from "./server/routes/static.js";
 import { attachSyncServer } from "./server/sync.js";
 import { getPdfNotesStatus, listPdfsInDirectory, type PdfNotesStatus } from "./utils.js";
@@ -147,7 +149,11 @@ export async function startDirectoryServer(
     const uploadedStatuses = [...uploadedPdfPaths.entries()].map(([name, path]) =>
       ({ ...getPdfNotesStatus(uploadDir, basename(path)), pdfName: name }),
     );
-    return [...originalStatuses, ...uploadedStatuses].sort((a, b) =>
+    const linkStatuses = listLinksInDirectory(config.dirPath).flatMap((name) => {
+      const source = readLinkUrl(join(config.dirPath, name));
+      return source ? [{ ...getPdfNotesStatus(config.dirPath, name), source }] : [];
+    });
+    return [...originalStatuses, ...uploadedStatuses, ...linkStatuses].sort((a, b) =>
       a.pdfName.localeCompare(b.pdfName),
     );
   }
@@ -198,6 +204,7 @@ export async function startDirectoryServer(
         (await handleUploadRoutes(req, res, url, { savePdf })) === "handled"
       )
         return;
+      if ((await handleLinkRoutes(req, res, url, { dirPath: config.dirPath })) === "handled") return;
 
       if (
         (await handleListingRoutes(req, res, url, {

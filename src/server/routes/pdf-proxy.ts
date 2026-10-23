@@ -6,6 +6,7 @@ import { notFound, isSafeFilename, send } from "../http-utils.js";
 import { renderHtml } from "../html-render.js";
 import { createNotesUpdater } from "../notes-store.js";
 import { notesPathFor } from "../../utils.js";
+import { cachedLinkedPdf, fetchLinkedPdf, isLinkName, readLinkUrl } from "../linked-pdfs.js";
 import { handleNotesRoutes } from "./notes.js";
 import { handleRecordingRoutes } from "./recording.js";
 import { handleStaticRoutes } from "./static.js";
@@ -45,7 +46,7 @@ async function getOrCreateCache(
   const meta = {
     pdfUrl: `${prefix}/slides.pdf`,
     notesUrl: `${prefix}/notes.json`,
-    pdfName: basename(pdfPath),
+    pdfName: basename(pdfPath).replace(/\.url$/i, ".pdf"),
     timerMinutes: deps.timerMinutes ?? null,
     listUrl: "/list",
   };
@@ -93,6 +94,32 @@ export async function handlePdfProxyRoutes(
     return "handled";
   }
 
+  // A linked PDF (`.url` file) keeps notes and recordings next to the link;
+  // the PDF bytes come from the cache. Only opening the presenter fetches,
+  // so audience reloads never hit the web.
+  let slidesPath = pdfPath;
+  if (!resolvedPdfPath && isLinkName(pdfName)) {
+    const linkUrl = readLinkUrl(pdfPath);
+    if (!linkUrl) {
+      notFound(res);
+      return "handled";
+    }
+    let cached = cachedLinkedPdf(linkUrl);
+    if (!cached && subPath === "/presenter") {
+      try {
+        cached = (await fetchLinkedPdf(linkUrl)).path;
+      } catch (err) {
+        send(res, 502, `Could not load ${linkUrl}: ${err instanceof Error ? err.message : err}`);
+        return "handled";
+      }
+    }
+    if (!cached && subPath === "/slides.pdf") {
+      notFound(res);
+      return "handled";
+    }
+    slidesPath = cached ?? pdfPath;
+  }
+
   const notesPath = notesPathFor(pdfPath);
   const perPdf = await getOrCreateCache(pdfName, pdfPath, deps);
   if (subPath === "/presenter") {
@@ -122,7 +149,7 @@ export async function handlePdfProxyRoutes(
     (await handleStaticRoutes(req, res, subUrl, {
       audienceHtml: perPdf.audienceHtml,
       presenterHtml: perPdf.presenterHtml,
-      pdfPath,
+      pdfPath: slidesPath,
       notesPath,
       uiDir: deps.uiDir,
       pdfjsDir: deps.pdfjsDir,

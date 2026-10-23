@@ -22,6 +22,7 @@ This is a fork of [htlin222/pdf-presenter](https://github.com/htlin222/pdf-prese
 
 - **Network sync.** Presenter and audiences sync through a WebSocket on the server instead of only between windows of one browser, so any device on the LAN can open the audience view. Sync also works on restricted networks.
 - **Always-on directory server.** Without a file argument the root URL is an audience view with a waiting screen; the presenter picks a PDF from `/list` or uploads one from anywhere with **Open PDF**.
+- **PDFs from a URL.** **Add URL** on `/list` (on the presenter computer) saves a `<name>.url` link file in the PDF directory, so presentations published on a website show up in the list without being downloaded by hand. Every **Open** fetches the latest version. The last good copy is cached in `~/.cache/pdf-presenter-network/linked/` and offered when the site is unreachable. Notes are stored next to the link as `<name>.notes.json`. Link files use the standard `[InternetShortcut]` format (`URL=https://…`), so they can also be created by hand or synced with git.
 - **Annotations.** Pen (with colours), eraser, and laser pointer, replicated live to every audience.
 - **Zoom and pan** of the current slide, synced to audiences, plus clickable links inside the PDF.
 - **Timed slides.** Beamer `\transduration{seconds}` pages advance automatically.

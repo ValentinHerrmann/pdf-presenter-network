@@ -17,7 +17,7 @@ export function resolvePdfPath(input: string): string {
 }
 
 export function notesPathFor(pdfPath: string): string {
-  return pdfPath.replace(/\.pdf$/i, ".notes.json");
+  return pdfPath.replace(/\.(pdf|url)$/i, ".notes.json");
 }
 
 export function resolveDirectoryPath(input: string): string {
@@ -42,6 +42,8 @@ export interface PdfNotesStatus {
   hasNotes: boolean;
   filledCount: number;
   totalSlides: number;
+  /** URL of a linked PDF (`.url` file). */
+  source?: string;
 }
 
 export function getPdfNotesStatus(
