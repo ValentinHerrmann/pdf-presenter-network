@@ -7,6 +7,7 @@ node_bin=$(command -v node || true)
 user_name=$(id -un)
 service_name="pdf-presenter-network.service"
 service_file="/etc/systemd/system/$service_name"
+polkit_rule="/etc/polkit-1/rules.d/50-pdf-presenter-network.rules"
 launcher_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 bin_dir="$HOME/.local/bin"
@@ -111,6 +112,21 @@ Terminal=false
 Categories=Office;Presentation;
 StartupWMClass=PDF Presenter Network
 EOF
+
+# Lets the app launcher start the service after it was stopped on quit,
+# without a password. Only this user, this unit, and only "start".
+if [ -d /etc/polkit-1/rules.d ]; then
+  sudo tee "$polkit_rule" >/dev/null <<EOF
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") == "$service_name" &&
+      action.lookup("verb") == "start" &&
+      subject.user == "$user_name") {
+    return polkit.Result.YES;
+  }
+});
+EOF
+fi
 
 sudo systemctl daemon-reload
 sudo systemctl enable "$service_name"

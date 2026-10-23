@@ -1,5 +1,5 @@
 #!/bin/sh
-# Remove PDF Presenter Network: systemd service, app-menu entry, CLI links,
+# Remove PDF Presenter Network: systemd service and polkit rule, app-menu entry, CLI links,
 # and ~/.local/share/pdf-presenter-network (release files and browser profile).
 #
 #   curl -fsSL https://github.com/ValentinHerrmann/pdf-presenter-network/releases/latest/download/uninstall.sh | sh
@@ -7,6 +7,7 @@ set -eu
 
 service_name="pdf-presenter-network.service"
 service_file="/etc/systemd/system/$service_name"
+polkit_rule="/etc/polkit-1/rules.d/50-pdf-presenter-network.rules"
 data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network"
 desktop_file="${XDG_DATA_HOME:-$HOME/.local/share}/applications/pdf-presenter-network.desktop"
 bin_dir="$HOME/.local/bin"
@@ -19,7 +20,7 @@ fi
 if [ -f "$service_file" ]; then
   printf '%s\n' "Removing $service_name (requires administrator permission)..."
   sudo systemctl disable --now "$service_name" || true
-  sudo rm -f "$service_file"
+  sudo rm -f "$service_file" "$polkit_rule"
   sudo systemctl daemon-reload
 fi
 

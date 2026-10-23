@@ -1,10 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { networkInterfaces } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import type { RouteResult } from "../types.js";
-import { MIME, send } from "../http-utils.js";
+import { isLocalRequest, MIME, send } from "../http-utils.js";
 import pkg from "../../../package.json" with { type: "json" };
 
 const REPO = "ValentinHerrmann/pdf-presenter-network";
@@ -20,15 +19,6 @@ let latest: string | null = null;
 let checkedAt = 0;
 let checking: Promise<void> | null = null;
 let state: UpdateState = "idle";
-
-/** True for requests from this machine (loopback or one of its own addresses). */
-function isLocalRequest(req: IncomingMessage): boolean {
-  const address = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
-  if (address === "::1" || address.startsWith("127.")) return true;
-  return Object.values(networkInterfaces()).some((list) =>
-    list?.some((item) => item.address === address),
-  );
-}
 
 function newer(candidate: string, current: string): boolean {
   const a = candidate.split(".").map(Number);

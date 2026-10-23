@@ -146,6 +146,11 @@ export interface SyncServer {
   ): Promise<"handled" | "skip">;
   /** Drop all state (e.g. a different PDF was opened) and tell clients. */
   reset(): void;
+  /**
+   * Tell clients the server is going away. `close` asks audiences to close
+   * their window (quit); otherwise they wait for the server to return.
+   */
+  announceShutdown(close: boolean): void;
   stop(): Promise<void>;
 }
 
@@ -164,6 +169,13 @@ export function attachSyncServer(server: Server): SyncServer {
   const events: LoggedEvent[] = [];
   let seq = 0;
   const waiters = new Set<() => void>();
+
+  let shuttingDown = false;
+
+  function announceShutdown(close: boolean): void {
+    shuttingDown = true;
+    publish({ type: "shutdown", close });
+  }
 
   function publish(message: object): void {
     broadcast(clients, message);
@@ -352,10 +364,17 @@ export function attachSyncServer(server: Server): SyncServer {
       state = initialState();
       publish(snapshot(state));
     },
+    announceShutdown,
     stop: () =>
       new Promise<void>((resolve) => {
+        if (!shuttingDown) announceShutdown(false);
         for (const wake of [...waiters]) wake();
-        for (const client of clients) client.terminate();
+        // Graceful close flushes the shutdown message; terminate stragglers.
+        for (const client of clients) client.close(1001);
+        const timer = setTimeout(() => {
+          for (const client of clients) client.terminate();
+        }, 500);
+        timer.unref();
         webSocketServer.close();
         resolve();
       }),

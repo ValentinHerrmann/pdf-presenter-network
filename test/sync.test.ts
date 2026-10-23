@@ -122,6 +122,54 @@ describe("WebSocket sync relay", () => {
   });
 });
 
+describe("Shutdown announcement", () => {
+  it("asks audiences to close on quit and only to wait on stop", async () => {
+    const httpServer = createServer();
+    const sync = attachSyncServer(httpServer);
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("Server did not bind");
+    resources.push(async () => {
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    });
+
+    const audience = await openSocket(address.port);
+    audience.send(JSON.stringify({ type: "hello", role: "audience" }));
+    await nextMessage(audience);
+
+    sync.announceShutdown(true);
+    await expect(nextMessage(audience)).resolves.toEqual({ type: "shutdown", close: true });
+
+    const other = await openSocket(address.port);
+    other.send(JSON.stringify({ type: "hello", role: "audience" }));
+    await nextMessage(other);
+    const quitAgain = nextMessage(other);
+    await sync.stop();
+    // stop() after a quit announcement does not announce again.
+    await expect(
+      Promise.race([quitAgain.then(() => "message"), new Promise((r) => setTimeout(() => r("none"), 200))]),
+    ).resolves.toBe("none");
+  });
+
+  it("tells clients to wait when the server stops", async () => {
+    const httpServer = createServer();
+    const sync = attachSyncServer(httpServer);
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("Server did not bind");
+    resources.push(async () => {
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    });
+
+    const audience = await openSocket(address.port);
+    audience.send(JSON.stringify({ type: "hello", role: "audience" }));
+    await nextMessage(audience);
+    const shutdown = nextMessage(audience);
+    await sync.stop();
+    await expect(shutdown).resolves.toEqual({ type: "shutdown", close: false });
+  });
+});
+
 describe("HTTP long-poll sync fallback", () => {
   it("serves snapshots, waits for presenter posts, and mirrors them to WebSocket audiences", async () => {
     const sync = { current: null as ReturnType<typeof attachSyncServer> | null };

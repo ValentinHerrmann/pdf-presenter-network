@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createReadStream, statSync } from "node:fs";
+import { networkInterfaces } from "node:os";
 import { extname } from "node:path";
 
 export const MIME: Record<string, string> = {
@@ -37,6 +38,15 @@ export function send(
     ...extraHeaders,
   });
   res.end(body);
+}
+
+/** True for requests from this machine (loopback or one of its own addresses). */
+export function isLocalRequest(req: IncomingMessage): boolean {
+  const address = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+  if (address === "::1" || address.startsWith("127.")) return true;
+  return Object.values(networkInterfaces()).some((list) =>
+    list?.some((item) => item.address === address),
+  );
 }
 
 export function notFound(res: ServerResponse): void {

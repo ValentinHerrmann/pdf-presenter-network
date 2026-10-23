@@ -40,6 +40,17 @@ export async function initAudience() {
     }, 1000);
   }
 
+  // Opened by the presenter's Audience button: close together with it. The
+  // opener stays the same across presenter reloads, so only a real close counts.
+  if (window.opener) {
+    const watcher = window.setInterval(() => {
+      if (!window.opener || window.opener.closed) {
+        window.clearInterval(watcher);
+        window.close();
+      }
+    }, 1000);
+  }
+
   const overlay = createOverlay({
     canvas,
     overlay: overlayCanvas,
@@ -120,6 +131,14 @@ export async function initAudience() {
         strokesBySlide.delete(msg.slide);
         if (msg.slide === currentSlide) overlay.redraw();
         break;
+      case "shutdown":
+        socket.close();
+        showWaitingScreen();
+        // Waiting screen first: browsers often refuse to close tabs the
+        // page did not open itself, and then it stays visible.
+        if (msg.close) window.setTimeout(() => window.close(), 300);
+        waitForServer();
+        break;
       case "snapshot":
         strokesBySlide.clear();
         for (const [slide, strokes] of Object.entries(msg.strokes ?? {})) {
@@ -132,6 +151,28 @@ export async function initAudience() {
         break;
     }
   });
+
+  // Same look as the server's waiting page, built locally because the
+  // server is already gone.
+  function showWaitingScreen() {
+    document.body.innerHTML = `
+      <main style="height:100vh;display:grid;place-items:center;text-align:center;background:#0d1117;color:#e6edf3;font:16px system-ui,sans-serif">
+        <div><h1>Waiting for presentation</h1><p style="color:#8b949e">The audience view will appear when a presenter opens a PDF.</p></div>
+      </main>`;
+    document.body.style.margin = "0";
+  }
+
+  async function waitForServer() {
+    for (;;) {
+      await new Promise((resolve) => window.setTimeout(resolve, 2000));
+      try {
+        const response = await fetch("/", { method: "HEAD", cache: "no-store" });
+        if (response.ok) return window.location.replace("/");
+      } catch {
+        // Still down.
+      }
+    }
+  }
 
   // Derive presenter URL from current location (works for both single and directory mode)
   const presenterUrl = window.location.pathname.replace(/\/?$/, "") + "/presenter";
