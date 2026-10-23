@@ -151,6 +151,11 @@ export interface SyncServer {
    * their window (quit); otherwise they wait for the server to return.
    */
   announceShutdown(close: boolean): void;
+  /**
+   * End the presentation but keep serving: drop all state and ask audiences
+   * to show the waiting screen and close, as on quit.
+   */
+  endPresentation(): void;
   stop(): Promise<void>;
 }
 
@@ -365,6 +370,10 @@ export function attachSyncServer(server: Server): SyncServer {
       publish(snapshot(state));
     },
     announceShutdown,
+    endPresentation: () => {
+      state = initialState();
+      publish({ type: "shutdown", close: true });
+    },
     stop: () =>
       new Promise<void>((resolve) => {
         if (!shuttingDown) announceShutdown(false);

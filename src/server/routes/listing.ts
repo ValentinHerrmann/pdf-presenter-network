@@ -11,12 +11,14 @@ export interface ListingRouteDeps {
   getCurrentAudienceHtml: () => string | null;
   getCurrentPresenterHtml: () => string | null;
   getStatuses?: () => PdfNotesStatus[];
+  stopPresenting: () => void;
 }
 
 /**
  * Handles directory listing routes:
  *   - GET /  or  GET /list  → listing HTML page
  *   - GET /api/listing      → JSON array of PdfNotesStatus
+ *   - POST /api/stop-presenting → end the presentation; audiences wait
  */
 export async function handleListingRoutes(
   req: IncomingMessage,
@@ -26,6 +28,11 @@ export async function handleListingRoutes(
 ): Promise<RouteResult> {
   const pathname = url.pathname;
   const method = req.method ?? "GET";
+  if (pathname === "/api/stop-presenting" && method === "POST") {
+    deps.stopPresenting();
+    send(res, 204, "");
+    return "handled";
+  }
   if (method !== "GET" && method !== "HEAD") return "pass";
 
   if (pathname === "/") {

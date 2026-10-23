@@ -151,6 +151,33 @@ describe("Shutdown announcement", () => {
     ).resolves.toBe("none");
   });
 
+  it("ends a presentation without stopping: clears state and asks audiences to close", async () => {
+    const httpServer = createServer();
+    const sync = attachSyncServer(httpServer);
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("Server did not bind");
+    resources.push(async () => {
+      await sync.stop();
+      await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    });
+
+    const presenter = await openSocket(address.port);
+    presenter.send(JSON.stringify({ type: "hello", role: "presenter" }));
+    await nextMessage(presenter);
+    presenter.send(JSON.stringify({ type: "slide", slide: 4 }));
+    await nextMessage(presenter);
+
+    sync.endPresentation();
+    await expect(nextMessage(presenter)).resolves.toEqual({ type: "shutdown", close: true });
+
+    const audience = await openSocket(address.port);
+    audience.send(JSON.stringify({ type: "hello", role: "audience" }));
+    await expect(nextMessage(audience)).resolves.toMatchObject({ type: "snapshot", slide: 1, strokes: {} });
+    presenter.close();
+    audience.close();
+  });
+
   it("tells clients to wait when the server stops", async () => {
     const httpServer = createServer();
     const sync = attachSyncServer(httpServer);

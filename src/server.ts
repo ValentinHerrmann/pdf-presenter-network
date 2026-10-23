@@ -207,6 +207,12 @@ export async function startDirectoryServer(
           getCurrentPdf: () => currentPdfName,
           getCurrentAudienceHtml: () => currentAudienceHtml,
           getCurrentPresenterHtml: () => currentPresenterHtml,
+          stopPresenting: () => {
+            currentPdfName = null;
+            currentAudienceHtml = null;
+            currentPresenterHtml = null;
+            sync.endPresentation();
+          },
           getStatuses,
         })) === "handled"
       )

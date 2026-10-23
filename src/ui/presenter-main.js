@@ -64,6 +64,21 @@ export async function initPresenter() {
       backBtn.href = config.listUrl;
       backBtn.classList.remove("hidden");
     }
+    const stopButton = document.getElementById("stop-presenting");
+    stopButton?.classList.remove("hidden");
+    stopButton?.addEventListener("click", async () => {
+      if (!window.confirm("Stop presenting? Audience screens show the waiting page and close.")) return;
+      stopButton.disabled = true;
+      try {
+        await editor.flushPending();
+        const response = await fetch("/api/stop-presenting", { method: "POST" });
+        if (!response.ok) throw new Error(await response.text());
+        window.location.href = config.listUrl;
+      } catch (err) {
+        stopButton.disabled = false;
+        alert(`Could not stop presenting: ${err.message}`);
+      }
+    });
     const openButton = document.getElementById("open-pdf");
     const openInput = document.getElementById("open-pdf-input");
     openButton?.classList.remove("hidden");

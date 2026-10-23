@@ -44,6 +44,7 @@ This downloads the latest release to `~/.local/share/pdf-presenter-network/app`,
 - **Hostname** shown in URLs (default: short hostname): `PDF_PRESENTER_HOST=vh`
 - **Update:** `pdf-presenter-update` installs the latest release if it is newer and asks for the directory again (Enter keeps the current one); `pdf-presenter-update --check` only reports. Re-running the install command works too.
 - **Quit:** closing the app window asks whether to stop the service too (needs `zenity` or `kdialog`). If yes, audience screens switch to the waiting page and try to close. An audience window opened with the presenter's **Audience** button closes together with the presenter. The next app launch starts the service again, without a password, through a polkit rule the installer adds.
+- **Stop presenting:** the presenter's **Stop presenting** button (PDF-folder mode) ends the presentation without stopping the server. Audience screens switch to the waiting page and try to close, and the presenter returns to the PDF list. Opening a PDF starts the next presentation.
 - **Update from the presenter:** when a newer release exists, the presenter view and the PDF list on the presenter PC show an **Update to vX.Y.Z** button (checked on server start and hourly). It installs the release without `sudo`, keeps the service settings, restarts the server and reloads the page. Other devices never see it. Service changes in a new release still need `pdf-presenter-update`.
 - **Uninstall:** removes the service, app-menu entry, CLI links, and `~/.local/share/pdf-presenter-network`.
 
