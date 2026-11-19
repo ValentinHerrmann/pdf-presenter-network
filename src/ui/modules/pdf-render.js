@@ -1,8 +1,11 @@
 // Shared PDF.js rendering helpers used by both audience and presenter views.
 
 import * as pdfjsLib from "/assets/pdfjs/build/pdf.mjs";
+import { installFrameFallback } from "./frame-fallback.js";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/assets/pdfjs/build/pdf.worker.mjs";
+// Keep rendering when the window gets no animation frames (see module).
+installFrameFallback();
 
 const DEFAULT_CONFIG = {
   pdfUrl: "/slides.pdf",

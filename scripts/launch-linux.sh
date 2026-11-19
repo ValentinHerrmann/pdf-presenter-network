@@ -5,6 +5,10 @@ host="${PDF_PRESENTER_HOST:-$(hostname -s)}"
 url="http://${host}/list"
 profile="${XDG_DATA_HOME:-$HOME/.local/share}/pdf-presenter-network/chrome-profile"
 service_name="pdf-presenter-network.service"
+# Keep the audience window following the presenter when it is hidden, on
+# another desktop or not focused: no timer throttling or backgrounding.
+# They only apply when this call starts the browser for the profile.
+keep_running="--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
 
 # Ask whether to stop the service too. The server exits cleanly, so systemd
 # (Restart=on-failure) leaves it stopped until the next launch.
@@ -25,7 +29,7 @@ for browser in google-chrome google-chrome-stable chromium chromium-browser; do
     # Already open: the browser hands the URL to the running instance and
     # returns at once, so there is nothing to wait for.
     if pgrep -f -- "--user-data-dir=$profile" >/dev/null 2>&1; then
-      exec "$browser" --user-data-dir="$profile" --app="$url"
+      exec "$browser" --user-data-dir="$profile" $keep_running --app="$url"
     fi
 
     # Start the service if a previous session stopped it. A polkit rule from
@@ -39,7 +43,7 @@ for browser in google-chrome google-chrome-stable chromium chromium-browser; do
       done
     fi
 
-    "$browser" --user-data-dir="$profile" --app="$url" || true
+    "$browser" --user-data-dir="$profile" $keep_running --app="$url" || true
     ask_stop_service
     exit 0
   fi

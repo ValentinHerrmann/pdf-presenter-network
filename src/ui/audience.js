@@ -26,20 +26,28 @@ export async function initAudience() {
   const socket = createWebSocketTransport("audience");
   const strokesBySlide = new Map();
 
+  // Follow the presenter to another PDF. Polled, and also checked on every
+  // snapshot: the server sends one when the presenter opens a different
+  // PDF, and browsers slow intervals in hidden windows to once a minute.
   const pdfId = config.pdfId ?? config.pdfName;
-  if (window.location.pathname === "/" && pdfId) {
-    window.setInterval(async () => {
-      try {
-        const response = await fetch("/api/current", { cache: "no-store" });
-        const current = await response.json();
-        if (current.pdfName && current.pdfName !== pdfId) {
-          window.location.reload();
-        }
-      } catch {
-        // Keep the current audience view during transient server disconnects.
+  const followsCurrentPdf = window.location.pathname === "/" && !!pdfId;
+  let checkingCurrentPdf = false;
+  async function checkCurrentPdf() {
+    if (!followsCurrentPdf || checkingCurrentPdf) return;
+    checkingCurrentPdf = true;
+    try {
+      const response = await fetch("/api/current", { cache: "no-store" });
+      const current = await response.json();
+      if (current.pdfName && current.pdfName !== pdfId) {
+        window.location.reload();
       }
-    }, 1000);
+    } catch {
+      // Keep the current audience view during transient server disconnects.
+    } finally {
+      checkingCurrentPdf = false;
+    }
   }
+  if (followsCurrentPdf) window.setInterval(checkCurrentPdf, 1000);
 
   // Opened by the presenter's Audience button: close together with it. The
   // opener stays the same across presenter reloads, so only a real close counts.
@@ -70,6 +78,9 @@ export async function initAudience() {
     overlay.setLaser({ hidden: true });
     overlay.redraw();
     await renderPage(pdf, slide, canvas, stage);
+    // Another slide was requested while this one rendered: its call sets
+    // the status (renders finish out of order).
+    if (slide !== currentSlide) return;
     overlay.resize();
     slideViewport.resize();
     if (status) status.textContent = `${slide} / ${total}`;
@@ -141,6 +152,7 @@ export async function initAudience() {
         waitForServer();
         break;
       case "snapshot":
+        checkCurrentPdf();
         strokesBySlide.clear();
         for (const [slide, strokes] of Object.entries(msg.strokes ?? {})) {
           strokesBySlide.set(Number(slide), strokes);
