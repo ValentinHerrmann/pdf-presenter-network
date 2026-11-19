@@ -7,6 +7,7 @@ import {
   loadDocument,
   loadNotes,
   renderPage,
+  cancelRender,
   clampSlide,
 } from "./modules/pdf-render.js";
 import { createTimer } from "./modules/timer.js";
@@ -299,6 +300,7 @@ export async function initPresenter() {
   });
 
   function clearNext() {
+    cancelRender(nextCanvas);
     const ctx = nextCanvas.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);

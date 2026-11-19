@@ -35,8 +35,15 @@ export async function loadNotes(url) {
   }
 }
 
+// Renders are async and can finish out of order (a complex page started
+// first may end after a simple one started later). Only the newest render
+// per canvas may draw, or the canvas can show a stale slide.
+const renderGeneration = new WeakMap();
+
 export async function renderPage(pdf, pageNumber, canvas, container = canvas?.parentElement) {
   if (!canvas) return;
+  const generation = (renderGeneration.get(canvas) ?? 0) + 1;
+  renderGeneration.set(canvas, generation);
   const page = await pdf.getPage(pageNumber);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -54,6 +61,7 @@ export async function renderPage(pdf, pageNumber, canvas, container = canvas?.pa
   const bufferContext = buffer.getContext("2d");
   bufferContext.setTransform(dpr, 0, 0, dpr, 0, 0);
   await page.render({ canvasContext: bufferContext, viewport }).promise;
+  if (renderGeneration.get(canvas) !== generation) return;
 
   canvas.width = buffer.width;
   canvas.height = buffer.height;
@@ -62,6 +70,11 @@ export async function renderPage(pdf, pageNumber, canvas, container = canvas?.pa
   const context = canvas.getContext("2d");
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.drawImage(buffer, 0, 0);
+}
+
+/** Stops pending renders from drawing on `canvas` (e.g. before clearing it). */
+export function cancelRender(canvas) {
+  if (canvas) renderGeneration.set(canvas, (renderGeneration.get(canvas) ?? 0) + 1);
 }
 
 export function clampSlide(n, total) {

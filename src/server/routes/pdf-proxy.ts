@@ -47,6 +47,10 @@ async function getOrCreateCache(
     pdfUrl: `${prefix}/slides.pdf`,
     notesUrl: `${prefix}/notes.json`,
     pdfName: basename(pdfPath).replace(/\.url$/i, ".pdf"),
+    // The name `/api/current` reports. Differs from `pdfName` for linked
+    // PDFs (`deck.url` vs `deck.pdf`); comparing the wrong one makes the
+    // audience reload every second.
+    pdfId: pdfName,
     timerMinutes: deps.timerMinutes ?? null,
     listUrl: "/list",
   };

@@ -26,12 +26,13 @@ export async function initAudience() {
   const socket = createWebSocketTransport("audience");
   const strokesBySlide = new Map();
 
-  if (window.location.pathname === "/" && config.pdfName) {
+  const pdfId = config.pdfId ?? config.pdfName;
+  if (window.location.pathname === "/" && pdfId) {
     window.setInterval(async () => {
       try {
         const response = await fetch("/api/current", { cache: "no-store" });
         const current = await response.json();
-        if (current.pdfName && current.pdfName !== config.pdfName) {
+        if (current.pdfName && current.pdfName !== pdfId) {
           window.location.reload();
         }
       } catch {
